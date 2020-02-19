@@ -8,7 +8,7 @@ Created on Mon Feb 10 16:17:21 2020
 import os
 import argparse
 
-path='F:/Ghosn_lab/Devon/Adding sequence/Fluorescent reporters/'   ### Folder only contains new fastq files
+path='F:/Ghosn_lab/Devon/Adding sequence/IAV sequences/'   ### Folder only contains new fastq files
 files=os.listdir(path)
 
 Dic={}
@@ -32,8 +32,8 @@ Frame='.'
 #%% Write to gtf
 file=open('add_gene.gtf','w')
 for key in Dic.keys():
-    Attributes= 'gene_id "'+key[1:]+'"; transcript_id "'+key[1:]+'";\n'
-    out='\t'.join([key,source,feature,Start,str(len(seq)),Score,strand,Frame,Attributes])
+    Attributes= 'gene_id "'+key[1:]+'"; transcript_id "'+key[1:]+'"; gene_name "'+key[1:]+'";\n'
+    out='\t'.join([key[1:],source,feature,Start,str(Dic[key]),Score,strand,Frame,Attributes])
     file.write(out)
 file.close()
     
