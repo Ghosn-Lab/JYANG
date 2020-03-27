@@ -1,0 +1,1627 @@
+---
+title: "running_vdj_single_cell_pipeline"
+output: html_document
+---
+
+
+### Introduction
+
+A significant amount of time and effort is being made into the development of a comprehensive single cell omics pipeline. On my end, I've already done a lot of the development for the single cell VDJ analysis within the Sanz group. We have been piecing together the transcriptomics and surface expression side of things, but Eliver Ghosn's group has a big head start with his informatics team on those two ends. 
+
+This document will serve as an explainer and source of functions related to the processing and analysis of the single cell repertoire data. It will be broken down into functions, heavily commented, and version controlled on a git repository that can be cloned here: "https://mcwoodruff@bitbucket.org/mcwoodruff/totalseq_repository.git"
+
+Recent validated versions of the functions will be pulled out and saved as .r files in the 'developed functions' folder within the same version control system.
+
+## Table of Contents
+
+  1. process_cellranger_output
+  2. process_imgt_output
+  3. batch_assign_lineages
+  4. extract_mutation_data
+
+### Function develpment
+
+## process_cellranger_output
+
+This function serves as the startpoint downstream of the CellRanger processing system. Basically, CellRanger does the hard work in identifying barcodes, aligning, and providing metadata on censensus sequences that it believes to be from VDJ rearrangements. We then use those metadata to filter down into sequences that we believe to be real based on a number of parameters:
+
+  1. Use the is_cell call to remove 'contaminating' VDJ sequences
+  2. Use CellRanger's high_confidence call to remove low-quality sequences
+  3. Restrict down to full length, productive sequences.
+  4. Filter barcodes with multiple heavy chains or multiple light chains (multiplet GEMs)
+  
+A critical piece of this process is barcode indexing. CellRanger establishes an index based on the sample number that it is fed into the software. This is important because we are going to need to use longitudinal datasets on many of these projects where barcode overlap becomes a problem. A consistent indexing system has to be established in order to track everything appropriately. As a result, my function strips the CellRanger indexing and replaces it with an in-house index. That way there is never any worry that the cell being assessed is from the wrong run.
+
+In addition, this processing step is the easiest place to add in metadata associated with each sample. Instead of hard-coding arguments, I've decided to start referring to a .csv file containing all of the relevant metadata that I'm currently using. This way, a google spreadsheet can just be updated, and downloaded as a .csv file wherever the function is being run.
+
+Finally, with everything indexed appropriately, a single, high-confidence fasta is generated to be fed into IMGT, and several files are spit out to aid in downstream processing. These files are saved in an automatically generated 'superrseq processed' folder within the parent directory of the raw CellRanger outputs.
+
+Here is the running function:
+
+```{r}
+
+#' process_cellranger_outputs
+#'
+#' @param cellranger_all_contig_annotations_csv Quoted file path of the CellRanger unfiltered annotations .csv
+#' @param cellranger_all_contig_fasta Quoted file path of the CellRanger unfiltered contig .fasta
+#' @param sample_index Internal sample index to be appended as metadata to the dataset
+#' @param filter_is_cell Use the is_cell CellRanger filter in generating the high-confidence .fasta
+#' @param filter_high_confidence Use the high_confidence CellRanger filter in generating the high-confidence .fasta
+#' @param filter_is_full_length Use the full_length CellRanger filter in generating the high-confidence .fasta
+#' @param filter_is_productive Use the is_productive CellRanger filter in generating the high-confidence .fasta
+#' @param filter_read_count Minimum reads requirement in generating the high-confidence .fasta
+#' @param filter_umi_count Minimum UMI requirement in generating the high-confidence .fasta
+#' @param require_light_chain Require both a single heavy chain and a single light chain - otherwise a lack of light chain is permitted
+#'
+#' @return
+#' @export
+#'
+#' @examples
+
+
+process_cellranger_outputs <- function(cellranger_all_contig_annotations_csv, 
+                                       cellranger_all_contig_fasta,
+                                       metadata_csv,
+                                       sample_index = FALSE,
+                                       filter_is_cell = TRUE, 
+                                       filter_high_confidence = TRUE, 
+                                       filter_is_full_length = TRUE, 
+                                       filter_is_productive = TRUE, 
+                                       filter_read_count = 50,
+                                       filter_umi_count = 2,
+                                       require_light_chain = FALSE) {
+  
+##Dependencies
+require(dplyr)
+require(readr)
+require(stringr)
+  
+## Create a subdirectory for processed outputs
+  subdirectory_path <- gsub("all_contig_annotations.csv", "superrseq_processed_cellranger_outputs/", cellranger_all_contig_annotations_csv)
+  dir.create(subdirectory_path)
+  setwd(subdirectory_path)
+
+### Function reads a .fasta and returns a data framewith the sequence and related info
+read_fasta <- function(fasta_file) {
+  
+  raw_file <- read_file(fasta_file) ###read raw file
+  raw_matrix <- str_split_fixed(raw_file, ">", Inf) ###splits on the greater than
+  raw_chr_strings <- raw_matrix[,2:ncol(raw_matrix)] ###trims the first empty entry
+  
+  info_strings <- gsub("^(.*?)\n.*", "\\1", raw_chr_strings) ### store the info line
+  
+  sequence_strings <- gsub("^.*?\n(.*)", "\\1", raw_chr_strings) ### store the sequence string
+  returns_removed <- gsub("\n", "", sequence_strings) ### remove all returns
+  carriage_returns_removed <- gsub("\r", "", returns_removed) ### remove carriage returns
+  
+  tibble("seq_info" = info_strings, "seq" = carriage_returns_removed) ### make a data frame
+  
+}
+
+### Function takes a data frame containing ids and sequences, and returns a fasta formatted file
+write_fasta <- function(df, seq_id, seq, file = "fasta.txt") {
+  
+  fasta_matrix <- matrix(nrow = nrow(df), ncol = 1)
+  
+  for (i in 1:nrow(df)) {
+    fasta_matrix[i,1] <- paste(">", df[[seq_id]][i], "\n", df[[seq]][i], "\n", sep = "")
+  }
+  
+  write(fasta_matrix, file = file)
+  
+}
+  
+##Load in the files
+annotation_file <- read_csv(cellranger_all_contig_annotations_csv)
+contigs <- read_fasta(cellranger_all_contig_fasta)
+metadata_df <- read_csv(metadata_csv)
+
+## Index the annotations file
+annotation_file$sample_index <- sample_index
+
+## Tack on the metadata to the annotations file
+annotation_file <- left_join(annotation_file, metadata_df, by = "sample_index")
+
+##Index the sample barcodes
+raw_barcodes <- gsub("^([A-Z]*).*", "\\1", annotation_file$barcode)
+annotation_file$indexed_barcode <- paste(raw_barcodes, annotation_file$sample_index, sep = "-")
+
+##Extract the contig_id number
+annotation_file$raw_contig_id <- gsub(".*(_contig_[0-9]*)$", "\\1", annotation_file$contig_id)
+annotation_file$indexed_contig_id <- paste(annotation_file$indexed_barcode, annotation_file$raw_contig_id, sep = "")
+  
+##Update the contig fasta indexes
+contigs$seq_info <- gsub("-[0-9]*_", paste("-", sample_index, "_", sep = ""), contigs$seq_info)
+
+##Write the updated .fasta with indexed contig designations  
+write_fasta(contigs, "seq_info", "seq", paste("processed_contigs.index_", sample_index, ".fasta", sep = "")) 
+
+###Filter the annotations file
+
+## is_cell filter
+if (filter_is_cell == TRUE) {
+  annotation_filter1 <- annotation_file %>% filter(is_cell == TRUE)
+} else {
+  annotation_filter1 <- annotation_file
+}
+
+## high_confidence filter
+if (filter_high_confidence == TRUE) {
+  annotation_filter2 <- annotation_filter1 %>% filter(high_confidence == TRUE)
+} else {
+  annotation_filter2 <- annotation_filter1
+}
+
+## full_length filter
+if (filter_is_full_length == TRUE) {
+  annotation_filter3 <- annotation_filter2 %>% filter(full_length == TRUE)
+} else {
+  annotation_filter3 <- annotation_filter2
+}
+
+## is_productive filter
+if (filter_is_productive == TRUE) {
+  annotation_filter4 <- annotation_filter3 %>% filter(productive == "True" | productive == TRUE)
+} else {
+  annotation_filter4 <- annotation_filter3
+}
+ 
+## read count and UMI filter
+annotation_filtered <- annotation_filter4 %>% filter(reads >= filter_read_count, umis >= filter_umi_count)
+
+## Generate a summary table with the number of filtered heavy and light chains per barcode
+annotation_chain_summary <- annotation_filtered %>%
+  group_by(indexed_barcode) %>% 
+  dplyr::summarize(n_seqs = n(),
+            n_heavy_chains = sum(chain == "IGH"),
+            n_light_chains = sum(chain != "IGH"))
+
+## Return a df identifying the number of barcodes containing n heavy and n light chains
+annotation_summary_df <- data.frame(table(annotation_chain_summary$n_heavy_chains, annotation_chain_summary$n_light_chains))
+
+## Name the df appropriately
+names(annotation_summary_df) <- c("n_heavy_chains", "n_light_chains", "n_barcodes")
+
+## Identify barcodes with the correct number of heavy and light chains
+if (require_light_chain == TRUE) {
+
+  annotation_filtered_singlet_barcodes <- annotation_chain_summary %>% 
+  filter(n_heavy_chains == 1, n_light_chains == 1) %>%
+  .$indexed_barcode
+  
+} else {
+  
+  annotation_filtered_singlet_barcodes <- annotation_chain_summary %>% 
+  filter(n_heavy_chains == 1, n_light_chains <= 1) %>%
+  .$indexed_barcode
+  
+}
+ 
+## Filter based on chain filter barcodes
+annotation_filtered <- annotation_filtered %>% filter(indexed_barcode %in% annotation_filtered_singlet_barcodes)
+
+## Add sequences to the annotations file
+annotation_filtered <- left_join(annotation_filtered, contigs, by = c("indexed_contig_id" = "seq_info"))
+
+## Select columns for later use following IMGT processing
+final_annotations <- annotation_filtered %>%
+  select(indexed_contig_id,
+         indexed_barcode,
+         sample_index:indexed_barcode,
+         seq,
+         reads,
+         umis,
+         c_gene)
+
+### Write fasta file for filtered sequences
+write_fasta(final_annotations, "indexed_contig_id", "seq", paste("filtered_singlet_sequences.index_", sample_index, ".fasta", sep = ""))
+
+### Write filtered annotations file
+write_csv(final_annotations, paste("filtered_singlet_annotations.index_", sample_index, ".csv", sep = ""))
+
+### Write a .csv showing the heavy and light chain data for diagnostic purposes
+write_csv(annotation_summary_df, paste("full_chain_summary.index_", sample_index, ".csv", sep = ""))
+
+### Print the number of filtered unique barcodes to the console
+print(paste(length(unique(final_annotations$indexed_barcode)), "high quality cells identified", sep = " "))
+
+}
+
+```
+
+## process_imgt_output
+
+After generating an indexed, high-confidence .fasta file, each file will be uploaded to the IMGT server for VDJ alignment. It is important to note that for the IMGT alignment, I am using all default parameters, except for the inclusion of individual files (there is a checkbox near the bottom of the upload screen). The individual files allow for the script to extract hotspot mutation data from each individual sequence and incorporate hotspot mutation data into the downstream analysis. 
+
+The process_imgt_output function is designed to walk through the output (.tsv) file and extract basically everything I can out of them into one centralized data frame. From there, all of the sequences are stiched back together with the CellRanger annotation data to create a hybrid matrix containing each individual sequence and all relavent features from both analyses. The resulting .csv file is then saved in both wide (one cell per row) and long (one sequence per row) into the summary file directory containing the raw IMGT output files. In addition, the file combs through the individual IMGT output files and extracts a table containing the details of every recorded mutation in the set (one mutation per row).
+
+Based on conversations with Junkai, the bioinformatician in Eliver's lab, it has become clear to me that a core piece of functionality of this pipeline will be to get the VDJ data into an importable format in Seurat. This basically means rearranging the output table such that five files are available.
+
+  1. A directory containing the feature MEX data
+  2. The matrix file (.mtx) associated with the feature values
+  3. The features .tsv file that tells seurat what the rows are
+  4. The barcodes .tsv file that tells setrat what the columns are
+  5. A metadata object that can be loaded alongside into Seurat
+  
+All of that is done at the end of the function and returned within the same IMGT summary directory.
+
+Here is the running function:
+
+```{r}
+
+#' process_imgt_output
+#'
+#' @param imgt_summary_file_directory Quoted file path of the IMGT summary file output folder
+#' @param processed_cellranger_annotations_file Quoted file path of the CellRanger filtered and processed annotations .csv file from process_cellranger_output
+#' @param imgt_individual_file_directory Quoted file path of the IMGT individual file output folder
+#' @param return_df Returns the df to the console if TRUE else just writes the output .csv file
+#'
+#' @return
+#' @export
+#'
+#' @examples
+
+process_imgt_output <- function(imgt_summary_file_directory, imgt_individual_file_directory, processed_cellranger_annotations_file, return_df = FALSE) {
+  
+  ###Check for dependencies
+  require(plyr)
+  require(dplyr)
+  require(stringr)
+  require(readr)
+  require(Peptides)
+  require(Matrix)
+  
+###File Processing Functions
+  
+  ########################
+  ##Process IMGT Summary File
+  ########################
+  
+  process_imgt_summary_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the summary file
+    summary_file <- read_tsv("1_Summary.txt")
+    
+    ##Rename the summary file columns
+    names(summary_file) <- tolower(names(summary_file))
+    names(summary_file) <- gsub(" ", "_", names(summary_file))
+    names(summary_file) <- gsub("-", "_", names(summary_file))
+    names(summary_file) <- gsub("%", "pct", names(summary_file))
+    
+    ##Re-organize the V and J allele information
+    summary_file$multiple_v_alleles_possible <- grepl("\\,", summary_file$v_gene_and_allele)
+    summary_file$multiple_j_alleles_possible <- grepl("\\,", summary_file$j_gene_and_allele)
+    summary_file$primary_v_allele <- tolower(gsub(".*(IG.*?) .*", "\\1", summary_file$v_gene_and_allele))
+    summary_file$v_gene <- gsub("(.*)\\*.*", "\\1", summary_file$primary_v_allele)
+    summary_file$primary_j_allele <- tolower(gsub(".*(IG.*?) .*", "\\1", summary_file$j_gene_and_allele))
+    summary_file$j_gene <- gsub("(.*)\\*.*", "\\1", summary_file$primary_j_allele)
+    summary_file$d_gene <- tolower(gsub(".*(IG.*)\\*.*", "\\1", summary_file$d_gene_and_allele))
+    
+    ##Process the summary file down to needed columns
+    processed_summary_file <- summary_file %>%
+      select(sequence_id,
+             analysed_sequence_length,
+             orientation,
+             v_domain_functionality,
+             v_gene,
+             primary_v_allele,
+             multiple_v_alleles_possible,
+             v_region_score,
+             v_region_identity_nt,
+             v_region_identity_pct,
+             j_gene,
+             primary_j_allele,
+             multiple_j_alleles_possible,
+             j_region_score,
+             j_region_identity_nt,
+             j_region_identity_pct) %>%
+      mutate(chain_type = gsub("(ig.).*", "\\1", v_gene))
+    
+    return(processed_summary_file)
+  
+    } ### End, process_summary_file()
+  
+  
+  #########################
+  ##Process IMGT Gapped nt Sequences file
+  #########################
+  
+  process_imgt_gapped_nt_sequences_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the IMGT Gapped nt Sequences file
+    imgt_gapped_nt_sequences <- read_tsv("2_IMGT-gapped-nt-sequences.txt")
+    
+    ##Rename the IMGT Gapped nt Sequences file columns
+    names(imgt_gapped_nt_sequences) <- tolower(names(imgt_gapped_nt_sequences))
+    names(imgt_gapped_nt_sequences) <- gsub(" ", "_", names(imgt_gapped_nt_sequences))
+    names(imgt_gapped_nt_sequences) <- gsub("-", "_", names(imgt_gapped_nt_sequences))
+    
+    ##Process the IMGT Gapped nt Sequences file columns
+    processed_imgt_gapped_nt_sequences <- imgt_gapped_nt_sequences %>%
+      select(sequence_id,
+             nt_gapped_vdj = v_d_j_region,
+             nt_gapped_vj = v_j_region,
+             nt_gapped_v = v_region,
+             nt_gapped_fr1 = fr1_imgt,
+             nt_gapped_fr2 = fr2_imgt,
+             nt_gapped_fr3 = fr3_imgt,
+             nt_gapped_fr4 = fr4_imgt,
+             nt_gapped_cdr1 = cdr1_imgt,
+             nt_gapped_cdr2 = cdr2_imgt,
+             nt_gapped_cdr3 = cdr3_imgt,
+             nt_gapped_junction = junction,
+             nt_gapped_j = j_region)
+    
+    return(processed_imgt_gapped_nt_sequences)  
+  
+  } ### End, process_imgt_gapped_nt_sequences_file()
+  
+  
+  
+  ########################
+  ##Process IMGT NT Sequences file
+  ########################
+  
+  process_imgt_nt_sequences_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the nt Sequences file
+    nt_sequences <- read_tsv("3_Nt-sequences.txt")
+    
+    ##Rename the nt Sequences file columns
+    names(nt_sequences) <- tolower(names(nt_sequences))
+    names(nt_sequences) <- gsub(" ", "_", names(nt_sequences))
+    names(nt_sequences) <- gsub("-", "_", names(nt_sequences))
+    names(nt_sequences) <- gsub("%", "pct", names(nt_sequences))
+    
+    ##Process the nt Sequences file
+    processed_nt_sequences <- nt_sequences %>%
+      select(sequence_id,
+             nt_vdj = v_d_j_region,
+             nt_vj = v_j_region,
+             nt_v = v_region,
+             nt_fr1 = fr1_imgt,
+             nt_fr2 = fr2_imgt,
+             nt_fr3 = fr3_imgt,
+             nt_fr4 = fr4_imgt,
+             nt_cdr1 = cdr1_imgt,
+             nt_cdr2 = cdr2_imgt,
+             nt_cdr3 = cdr3_imgt,
+             nt_junction = junction,
+             nt_j = j_region) %>%
+      mutate(nt_cdr3_length = nchar(nt_cdr3))
+    
+    return(processed_nt_sequences)
+
+  }###End, process_imgt_nt_sequences_file
+  
+  
+  #########################
+  ##Process the IMGT gapped AA sequences file
+  #########################
+  
+  
+  process_imgt_gapped_aa_sequences_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the imgt_gapped_aa_sequences file
+    imgt_gapped_aa_sequences <- read_tsv("4_IMGT-gapped-AA-sequences.txt")
+    
+    ##Rename the imgt_gapped_aa_sequences file columns
+    names(imgt_gapped_aa_sequences) <- tolower(names(imgt_gapped_aa_sequences))
+    names(imgt_gapped_aa_sequences) <- gsub(" ", "_", names(imgt_gapped_aa_sequences))
+    names(imgt_gapped_aa_sequences) <- gsub("-", "_", names(imgt_gapped_aa_sequences))
+    
+    ##Process the imgt_gapped_aa_sequences file columns
+    processed_imgt_gapped_aa_sequences <- imgt_gapped_aa_sequences %>%
+      select(sequence_id,
+             aa_gapped_vdj = v_d_j_region,
+             aa_gapped_vj = v_j_region,
+             aa_gapped_v = v_region,
+             aa_gapped_fr1 = fr1_imgt,
+             aa_gapped_fr2 = fr2_imgt,
+             aa_gapped_fr3 = fr3_imgt,
+             aa_gapped_fr4 = fr4_imgt,
+             aa_gapped_cdr1 = cdr1_imgt,
+             aa_gapped_cdr2 = cdr2_imgt,
+             aa_gapped_cdr3 = cdr3_imgt,
+             aa_gapped_junction = junction,
+             aa_gapped_j = j_region)
+    
+    return(processed_imgt_gapped_aa_sequences)
+    
+  } ###End, process_imgt_gapped_aa_sequences_file()
+  
+  
+  ########################
+  ##Process the IMGT AA sequences file
+  ########################
+  
+  
+  process_imgt_aa_sequences_file <- function(summary_directory = imgt_summary_file_directory){
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the aa_sequences file
+    aa_sequences <- read_tsv("5_AA-sequences.txt")
+    
+    ##Rename the aa_sequences file
+    names(aa_sequences) <- tolower(names(aa_sequences))
+    names(aa_sequences) <- gsub(" ", "_", names(aa_sequences))
+    names(aa_sequences) <- gsub("-", "_", names(aa_sequences))
+    names(aa_sequences) <- gsub("%", "pct", names(aa_sequences))
+    
+    ##Process the aa_sequences file
+    processed_aa_sequences <- aa_sequences %>%
+      select(sequence_id,
+             aa_vdj = v_d_j_region,
+             aa_vj = v_j_region,
+             aa_v = v_region,
+             aa_fr1 = fr1_imgt,
+             aa_fr2 = fr2_imgt,
+             aa_fr3 = fr3_imgt,
+             aa_fr4 = fr4_imgt,
+             aa_cdr1 = cdr1_imgt,
+             aa_cdr2 = cdr2_imgt,
+             aa_cdr3 = cdr3_imgt,
+             aa_junction = junction,
+             aa_j = j_region) 
+    
+    ##Establish a string of unique CDR3s
+    unique_cdr3s <- unique(processed_aa_sequences$aa_cdr3)
+    
+    ##Make that string into a df
+    cdr3_property_tibble <- tibble(aa_cdr3 = unique_cdr3s)
+    
+    ##Calculate the CDR3 peptide length
+    cdr3_property_tibble$cdr3_aa_length <- lengthpep(unique_cdr3s)
+    
+    ##Calculate the CDR3 MW
+    print("Calculating CDR3 Molecular Weights")
+    cdr3_property_tibble$cdr3_molecular_weight <- mw(unique_cdr3s)
+    
+    ##Calculate the CDR3 charge
+    print("Calculating CDR3 Charges")
+    cdr3_property_tibble$cdr3_net_charge <- charge(unique_cdr3s)
+    
+    ##Calculate the CDR3 isoelectric point
+    print("Calculating CDR3 Isoelectric Points")
+    cdr3_property_tibble$cdr3_isoelectric_point <- pI(unique_cdr3s)
+    
+    ##Calculate the CDR3 hydrophobicity
+    print("Calculating CDR3 Hydrophobicity")
+    cdr3_property_tibble$cdr3_hydrophobicity <- hydrophobicity(unique_cdr3s)
+    
+    ##Calculate the CDR3 aliphatic index
+    print("Calculating CDR3 Aliphatic Index")
+    cdr3_property_tibble$cdr3_aliphatic_index <- aIndex(unique_cdr3s)
+    
+    ##Calculate the CDR3 MW
+    print("Calculating CDR3 boman index")
+    cdr3_property_tibble$cdr3_boman_index <- boman(unique_cdr3s)
+    
+    ##Calculate the CDR3 boman prediction
+    cdr3_property_tibble$cdr3_boman_predicts_protein_interaction <- cdr3_property_tibble$cdr3_boman_index >= 2.48
+    
+    ##Calculate kidera factors
+    print("Calculating Kidera Factors")
+    kidera_factors <- as_tibble(t(bind_cols(kideraFactors(unique_cdr3s))))
+    names(kidera_factors) <- c("cdr3_kf_helix_bend_preference",
+                               "cdr3_kf_side_chain_size",
+                               "cdr3_kf_extended_structure_preference",
+                               "cdr3_kf_hydrophobicity",
+                               "cdr3_kf_double_bend_preference",
+                               "cdr3_kf_partial_specific_volume",
+                               "cdr3_kf_flat_extended_preference",
+                               "cdr3_kf_occurance_in_alpha_region",
+                               "cdr3_kf_pK_c",
+                               "cdr3_kf_surrounding_hydrophobicity")
+    
+    ##Join standard calculations and kidera factor calculations
+    cdr3_property_tibble <- bind_cols(cdr3_property_tibble, kidera_factors)
+    
+    ##Join processed aa sequences and CDR3 properties
+    processed_aa_sequences <- left_join(processed_aa_sequences, cdr3_property_tibble, by = "aa_cdr3")
+    
+    print("Done")
+    
+    return(processed_aa_sequences)
+    
+  }## End process_imgt_aa_sequences_file()
+  
+  
+  #########################
+  ##Process IMGT V-REGION-nt-mutation-statistics file
+  #########################
+  
+  process_imgt_v_region_nt_mutation_statistics_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the V-REGION-nt-mutation-statistics file
+    v_region_nt_mut_stats <- read_tsv("8_V-REGION-nt-mutation-statistics.txt")
+    
+    ##Rename the V-REGION-nt-mutation-statistics file columns
+    names(v_region_nt_mut_stats) <- tolower(names(v_region_nt_mut_stats))
+    names(v_region_nt_mut_stats) <- gsub(" ", "_", names(v_region_nt_mut_stats))
+    names(v_region_nt_mut_stats) <- gsub("-", "_", names(v_region_nt_mut_stats))
+    names(v_region_nt_mut_stats) <- gsub("%", "pct", names(v_region_nt_mut_stats))
+    names(v_region_nt_mut_stats) <- gsub(">", "_into_", names(v_region_nt_mut_stats))
+    
+    ## Select necessary columns
+    processed_v_region_nt_mut_stats <- v_region_nt_mut_stats %>%
+      select(2, 5:130)
+    
+    ## Clean the mutation data of IMGT gaps
+    #Establish a progress bar
+    print("Cleaning V region NT change statistics")
+    pb <- txtProgressBar(min = 0, max = length(processed_v_region_nt_mut_stats), style = 3)
+    
+    #Clean the data of IMGT gaps
+    for (i in 2:length(processed_v_region_nt_mut_stats)) {
+      if (class(processed_v_region_nt_mut_stats[[i]]) == "character") {
+        for (j in 1:nrow(processed_v_region_nt_mut_stats)) {
+          if (grepl(" \\(.*\\)", processed_v_region_nt_mut_stats[j,i])) {
+            processed_v_region_nt_mut_stats[j,i] <- gsub(" \\(.*\\)", "", processed_v_region_nt_mut_stats[j,i])
+          }
+        }
+      } else {
+        next()
+      }
+      setTxtProgressBar(pb, i)
+    }
+    
+    #Convert cleaned columns to numeric values
+    for (i in 2:length(processed_v_region_nt_mut_stats)) {
+      if (class(processed_v_region_nt_mut_stats[[i]]) == "character") {
+      processed_v_region_nt_mut_stats[[i]] <- as.numeric(processed_v_region_nt_mut_stats[[i]])
+      }
+    }
+    
+    ##Process v_region_nt_mut_stats file
+    
+    return(processed_v_region_nt_mut_stats)
+    
+  } ##End, process_imgt_v_region_nt_mutation_statistics_file()
+  
+  
+  
+  ######################
+  ##Process V-REGION-AA-change-statistics file
+  ######################
+  
+  process_imgt_v_region_aa_change_statistics_file <- function(summary_directory = imgt_summary_file_directory) {
+    
+    ##Set the working directory
+    setwd(summary_directory)
+    
+    ##Read the V-REGION-AA-change-statistics file
+    v_region_change_stats <- read_tsv("9_V-REGION-AA-change-statistics.txt")
+    
+    ##Read the V-REGION-AA-change-statistics columns
+    names(v_region_change_stats) <- tolower(names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub(" ", "_", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("-", "_", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("___$", "---", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("__\\+$", "--+", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("_\\+_$", "-+-", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("\\+__$", "+--", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("_\\+\\+$", "-++", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("\\+\\+_$", "++-", names(v_region_change_stats))
+    names(v_region_change_stats) <- gsub("\\+_\\+$", "+-+", names(v_region_change_stats))
+    
+    ##Select the V-REGION-AA-change-statistics columns
+    processed_v_region_change_stats <- v_region_change_stats %>%
+      select(2, 5:109)
+    
+    ##Clean the AA change statistics of inserted IMGT gap data
+    #Establish a progress bar
+    print("Cleaning V region AA change statistics")
+    pb <- txtProgressBar(min = 0, max = length(processed_v_region_change_stats), style = 3)
+    
+    #Clean the data of IMGT gaps
+    for (i in 2:length(processed_v_region_change_stats)) {
+      if (class(processed_v_region_change_stats[[i]]) == "character") {
+        for (j in 1:nrow(processed_v_region_change_stats)) {
+          if (grepl(" \\(.*\\)", processed_v_region_change_stats[j,i])) {
+            processed_v_region_change_stats[j,i] <- gsub(" \\(.*\\)", "", processed_v_region_change_stats[j,i])
+          }
+        }
+      } else {
+        next()
+      }
+      setTxtProgressBar(pb, i)
+    }
+    
+    #Set cleaned data to numeric column classes
+    for (i in 2:length(processed_v_region_change_stats)) {
+      if (class(processed_v_region_change_stats[[i]]) == "character") {
+      processed_v_region_change_stats[[i]] <- as.numeric(processed_v_region_change_stats[[i]])
+      }
+    }
+    
+    return(processed_v_region_change_stats)
+
+  }##End, process_imgt_v_region_aa_change_statistics_file()
+    
+  
+  ###########################
+  ##Process IMGT V-REGION-mutation-hotspots files
+  ###########################
+  
+  
+  process_imgt_v_region_mutation_hotspots_files <- function(imgt_summary_file_directory, imgt_individual_file_directory){
+    
+    ##Set the working directory
+    setwd(imgt_summary_file_directory)
+    
+    ##Read IMGT V-REGION-mutation-hotspots summary file
+     v_region_hotspots <- read_tsv("10_V-REGION-mutation-hotspots.txt")
+    
+    ##Rename V-REGION-mutation-hotspots summary file columns
+    names(v_region_hotspots) <- tolower(names(v_region_hotspots))
+    names(v_region_hotspots) <- gsub(" ", "_", names(v_region_hotspots))
+    names(v_region_hotspots) <- gsub("-", "_", names(v_region_hotspots))
+    
+    ##Select needed columns
+    processed_v_region_hotspots <- v_region_hotspots %>%
+      select(2, 5:8)
+    
+    ##Initialize hotspot mutation vactor columns for each region
+    fr1_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    fr2_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    fr3_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    cdr1_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    cdr2_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    cdr3_hotspot_mut_vector <- vector(length = nrow(v_region_hotspots))
+    
+    ##Initialize a progress bar
+    print("Identifying hotspot loci")
+    pb <- txtProgressBar(min = 0, max = nrow(v_region_hotspots), style = 3)
+    
+    #Identify hotspot locations
+    for(i in 1:nrow(v_region_hotspots)) {
+      
+      flattened_string <- str_flatten(v_region_hotspots[i,])
+      
+      fr1_hotspot_mut_vector[i] <- str_count(flattened_string, "FR1")
+      fr2_hotspot_mut_vector[i] <- str_count(flattened_string, "FR2")
+      fr3_hotspot_mut_vector[i] <- str_count(flattened_string, "FR3")
+      cdr1_hotspot_mut_vector[i] <- str_count(flattened_string, "CDR1")
+      cdr2_hotspot_mut_vector[i] <- str_count(flattened_string, "CDR2")
+      cdr3_hotspot_mut_vector[i] <- str_count(flattened_string, "CDR3")
+      
+      setTxtProgressBar(pb, i)
+    
+    }
+    
+    #Condense hotspot locations into a data frame
+    processed_v_region_hotspots <- tibble(sequence_id = v_region_hotspots$sequence_id,
+                             fr1_hotspot_loci = fr1_hotspot_mut_vector,
+                             fr2_hotspot_loci = fr2_hotspot_mut_vector,
+                             fr3_hotspot_loci = fr3_hotspot_mut_vector,
+                             cdr1_hotspot_loci = cdr1_hotspot_mut_vector,
+                             cdr2_hotspot_loci = cdr2_hotspot_mut_vector,
+                             cdr3_hotspot_loci = cdr3_hotspot_mut_vector,
+                             non_junction_hotspot_loci = fr1_hotspot_loci + fr2_hotspot_loci + fr3_hotspot_loci + cdr1_hotspot_loci + cdr2_hotspot_loci)
+    
+    ##Set working directory for individual files
+    setwd(imgt_individual_file_directory)
+    
+    ##Get the individual file list
+    file_list <- list.files(imgt_individual_file_directory)
+    
+    ##Initialize a list with an element for each sequence
+    sequence_list <- vector("list", length = length(file_list))
+    
+    ##Initialize a status bar
+    print("Identifying hotspot mutations")
+    pb <- txtProgressBar(min = 0, max = length(file_list), style = 3)
+    
+    ##Find the hotspot mutations for each individual sequence
+    for (i in 1:length(file_list)) {
+      
+      #Read in the individual file
+      seq <- read_file(file_list[i])
+      
+      #Pull the hotspot text chunk
+      hotspot_chunk <- gsub(".*and hotspots motifs\\\n(.*)\\\n+12.*.", "\\1", seq)
+      #Trimming the hotspot chunk
+      trimmed_hotspot_chunk <- gsub("(.)\\\n+$", "\\1", hotspot_chunk)
+      #Break the chunk into individual mutations
+      mutation_string <- str_split(trimmed_hotspot_chunk, "\n")[[1]]
+
+      # #Get rid of the aggregate V mutations
+      # mutation_string_vs_removed <- mutation_string[!grepl("V-REGION", mutation_string)]
+      #Identify mutations in hotspots
+      hotspot_mutations <- mutation_string[grepl("\\[", mutation_string)]
+      #Flatten the hotspot mutations
+      combined_hotspot_mutations <- str_flatten(hotspot_mutations)
+      
+      #If there are no hotspot mutations, fill with zeros
+      if(length(combined_hotspot_mutations) == 0) {
+        
+      fr1_hotspot_muts <- 0
+      fr2_hotspot_muts <- 0
+      fr3_hotspot_muts <- 0
+      cdr1_hotspot_muts <- 0
+      cdr2_hotspot_muts <- 0
+      cdr3_hotspot_muts <- 0
+      non_junction_hotspot_muts <- 0
+      
+      #Else, count the hotspot mutation regions 
+      } else {
+      
+      fr1_hotspot_muts <- str_count(combined_hotspot_mutations, "FR1")
+      fr2_hotspot_muts <- str_count(combined_hotspot_mutations, "FR2")
+      fr3_hotspot_muts <- str_count(combined_hotspot_mutations, "FR3")
+      cdr1_hotspot_muts <- str_count(combined_hotspot_mutations, "CDR1")
+      cdr2_hotspot_muts <- str_count(combined_hotspot_mutations, "CDR2")
+      cdr3_hotspot_muts <- str_count(combined_hotspot_mutations, "CDR3")
+      non_junction_hotspot_muts <- fr1_hotspot_muts + fr2_hotspot_muts + fr3_hotspot_muts + cdr1_hotspot_muts + cdr2_hotspot_muts
+      
+      }
+      
+      #Make a tibble with all of the hotspot mutations by region 
+      hotspot_df <- tibble(sequence_id = gsub("(.*)_[0-9]+$", "\\1", file_list[i]),
+                           fr1_hotspot_muts, fr2_hotspot_muts, fr3_hotspot_muts, cdr1_hotspot_muts, cdr2_hotspot_muts, cdr3_hotspot_muts, non_junction_hotspot_muts)
+      
+      #Add that tibble to the sequence list
+      sequence_list[[i]] <- hotspot_df
+      
+      setTxtProgressBar(pb, i)
+      
+    }##End, FOR loop
+    
+    #Bind all of the sequences back together
+    hotspot_df <- bind_rows(sequence_list)
+    
+    #Join hotspot locations and mutation data
+    processed_v_region_hotspots <- left_join(processed_v_region_hotspots, hotspot_df, by = "sequence_id")
+    
+    return(processed_v_region_hotspots)
+    
+  }##End, process_imgt_v_region_mutation_hotspots_files()
+  
+  ###########################
+  ## extract_mutation_data()
+  ###########################
+  
+    extract_mutation_data <- function(imgt_individual_file_directory) {
+    
+    setwd(imgt_individual_file_directory)
+      
+    ##Get the individual file list
+    file_list <- list.files(imgt_individual_file_directory)
+    
+    ##Initialize a list with an element for each sequence
+    sequence_list <- vector("list", length = length(file_list))
+    
+    names(sequence_list) <- file_list
+    
+    ##Find the hotspot mutations for each individual sequence
+    for (i in 1:length(file_list)) {
+      
+      #Read in the individual file
+      seq <- read_file(file_list[i])
+      
+      #Pull the hotspot text chunk
+      hotspot_chunk <- gsub(".*and hotspots motifs\\\n(.*)\\\n+12.*.", "\\1", seq)
+      
+      trimmed_hotspot_chunk <- gsub("(.)\\\n+$", "\\1", hotspot_chunk)
+      
+      #Break the chunk into individual mutations
+      mutation_string <- str_split(trimmed_hotspot_chunk, "\n")[[1]]
+      if (mutation_string == "") {next()}
+      
+      #Retain the indexed_contig_id data
+      mutation_df <- tibble("indexed_contig_id" = c(rep(file_list[i], length(mutation_string))))
+      
+      #Add a column of the raw data
+      mutation_df$raw_data <- mutation_string
+      #Extract the V gene
+      mutation_df$v_gene <- gsub(".*(IG.*?);.*", "\\1", mutation_df$raw_data)
+      #Extract the V gene region
+      mutation_df$mut_region <- gsub("^.*?;(.*?);.*", "\\1", mutation_df$raw_data)
+      #Extract the nt position of the mutation
+      mutation_df$nt_position <- gsub(".*[a,c,t,g]([0-9]+)>[a,c,t,g].*", "\\1", mutation_df$raw_data)
+      
+      #Add germline nt identity
+      mutation_df$nt_germline <- gsub(".*([a,c,t,g])[0-9]+>[a,c,t,g].*", "\\1", mutation_df$raw_data)
+      #Extract nt mutation identity
+      mutation_df$nt_mutation <- gsub(".*[a,c,t,g][0-9]+>([a,c,t,g]).*", "\\1", mutation_df$raw_data)
+      
+      #Determine hotspot mutation status
+      mutation_df$hotspot_mutation <- grepl("\\[", mutation_df$raw_data)
+      #If hotspot, extract type
+      mutation_df$hotspot_type <- ifelse(mutation_df$hotspot_mutation, gsub(".*?\\[([a,c,t,g]+) .*", "\\1", mutation_df$raw_data), NA)
+      
+      #Determine coding mutation status
+      mutation_df$coding_mutation <- grepl("\\(", mutation_df$raw_data)
+      #Extract the aa position of the mutation
+      mutation_df$aa_position <- ifelse(mutation_df$coding_mutation, gsub(".*?\\,[A-Z]([0-9]+).*", "\\1", mutation_df$raw_data), NA)
+      #Extract the aa germline identity
+      mutation_df$aa_germline <- ifelse(mutation_df$coding_mutation, gsub(".*?\\,([A-Z])[0-9]+.*", "\\1", mutation_df$raw_data), NA)
+      #If coding mutation, add aa_mutation
+      mutation_df$aa_mutation <- ifelse(mutation_df$coding_mutation, gsub(".*[A-Z][0-9]+>([A-Z]).*", "\\1", mutation_df$raw_data),
+                                        NA)
+      #If coding mutation, extract chemistry change
+      mutation_df$aa_change_chemistry <- ifelse(mutation_df$coding_mutation, gsub(".*\\((.*)\\).*", "\\1", mutation_df$raw_data),
+                                        NA)
+      
+      mutation_df <- mutation_df %>% select(-raw_data)
+      
+      mutation_df$nt_position <- as.numeric(mutation_df$nt_position)
+      
+      sequence_list[[i]] <- mutation_df
+  
+    }
+    
+    all_mutations_data <- bind_rows(sequence_list)
+    
+    all_mutations_data$indexed_contig_id <- gsub("(.*)_[0-9]+$", "\\1", all_mutations_data$indexed_contig_id)
+    
+    print("detailed mutation data extracted")
+    
+    return(all_mutations_data)
+    
+  } ### End extract_mutation_data()
+    
+  ###########################
+  ## convert_vdj_to_wide
+  ###########################  
+  
+  convert_vdj_to_wide <- function(merged_tibble) {
+    
+  ##Pull out sequence metadata
+  sample_metadata_start_index <- which(names(merged_tibble) == "indexed_barcode") + 1  
+
+  sample_metadata_end_index <- which(names(merged_tibble) == "seq") - 1
+
+  metadata_columns <- c(sample_metadata_start_index:sample_metadata_end_index)
+
+  index_metadata <- merged_tibble %>% select(metadata_columns)
+
+  trimmed_df <- merged_tibble %>% select(-metadata_columns)
+
+  heavy_df <- trimmed_df %>% filter(chain_type == "igh")
+  light_df <- trimmed_df %>% filter(chain_type != "igh")
+
+  names(heavy_df) <- paste("hc", names(heavy_df), sep = "_")
+  names(light_df) <- paste("lc", names(light_df), sep = "_")
+
+  names(heavy_df)[2] <- names(light_df)[2] <- names(trimmed_df)[2]
+
+  wide_df <- left_join(heavy_df, light_df, by = "indexed_barcode")
+  
+  indexed_heavy_metadata <- merged_tibble %>% filter(chain_type == "igh") %>% select(indexed_barcode:sample_metadata_end_index)
+  
+  final_wide <- left_join(indexed_heavy_metadata, wide_df, by = "indexed_barcode")
+  
+  return(final_wide)
+  
+  }
+  
+  ###########################
+  ## convert_wide_to_seurat
+  ###########################  
+  
+  convert_wide_to_seurat <- function(df = wide_tibble) {
+   
+  ##Identify numeric vdj data   
+  numeric_index <- map_lgl(df, ~ class(.) == "numeric")
+
+  ##Split data based on class
+  numeric_wide_df <- df %>% select(indexed_barcode, which(numeric_index))
+  metadata_wide_df <- df %>% select(indexed_barcode, which(!numeric_index))
+  
+  ##Retain valuable metadata for seurat loading
+  valuable_metadata <- metadata_wide_df %>% select(indexed_barcode,
+                                                 hc_indexed_contig_id,
+                                                hc_chain_type:hc_multiple_j_alleles_possible,
+                                                 hc_cdr3_boman_predicts_protein_interaction,
+                                                 hc_contains_avy_in_fr1:hc_contains_qw_in_fr1,
+                                                 lc_indexed_contig_id,
+                                                 lc_chain_type:lc_multiple_j_alleles_possible)
+  
+  ##Point to the seurat outs path
+  setwd(superrseq_seurat_outs_path)
+  
+  ##Write the metadata file
+  write_csv(valuable_metadata, paste("superrseq_processed_barcode_metadata.index_", merged_tibble$sample_index[1], ".csv", sep = ""))
+
+  ##Get rid of the individual conversion statistics and gapped sequence columns
+  nt_conversion_ind <- grepl("into", names(numeric_wide_df))
+  aa_conversion_ind <- grepl("imgt_[\\+,\\-]", names(numeric_wide_df))
+  gapped_sequence_ind <- grepl("positions", names(numeric_wide_df))
+  
+  valuable_numeric_data <- numeric_wide_df %>% select(-which(nt_conversion_ind), 
+                                                      -which(aa_conversion_ind), 
+                                                      -which(gapped_sequence_ind),
+                                                      -(lc_cdr3_net_charge:lc_cdr3_kf_surrounding_hydrophobicity),
+                                                      -(hc_cdr3_net_charge:hc_cdr3_kf_surrounding_hydrophobicity))
+  
+  ##Identify data to be rounded
+  pct_freq_ind <- grepl("pct", names(valuable_numeric_data)) | grepl("freq", names(valuable_numeric_data))
+  
+  ratio_ind <- grepl("ratio", names(valuable_numeric_data))
+  
+  ##Round data
+  valuable_numeric_data <- valuable_numeric_data %>% 
+    mutate_if(pct_freq_ind, ~round(., 0)) %>%
+    mutate_if(ratio_ind, ~ round(. * 100, 0))
+  
+  ##Convert rounded data to integers
+  integer_data <- valuable_numeric_data %>% 
+    select(-1) %>%
+    mutate_all(~as.integer(.))
+  
+  ##Format the matrix for MTX export
+  formatted_matrix <- as.matrix(integer_data)
+  rownames(formatted_matrix) <- valuable_numeric_data$indexed_barcode
+  formatted_matrix <- t(formatted_matrix)
+  
+  ##Create the features df
+  features_file <- tibble("gene_id" = rownames(formatted_matrix),
+                          "gene_name" = rownames(formatted_matrix),
+                          "type_of_feature" = "CUSTOM")
+  
+  ##Create the barcodes df
+  barcodes_file <- tibble("barcode" = colnames(formatted_matrix))
+  
+  ##Create the matrix object
+  matrix_object <- Matrix::Matrix(formatted_matrix, sparse = TRUE)
+  
+  ##Set the WD to the MEX path
+  setwd(superrseq_seurat_outs_mex_path)
+  
+  ##Write the files
+  write_tsv(features_file, "features.tsv")
+  write_tsv(barcodes_file, "barcodes.tsv")
+  writeMM(matrix_object, "matrix.mtx")
+    
+  }
+    
+  ############################
+  ###Global processing
+  ############################
+  
+  ##Establish a directory tree
+  superrseq_outs_path <- paste0(imgt_summary_file_directory, "/superrseq_outs/")
+  superrseq_seurat_outs_path <- paste0(superrseq_outs_path, "outs_for_seurat/")
+  superrseq_seurat_outs_mex_path <- paste0(superrseq_seurat_outs_path, "superrseq_vdj_features/")
+
+  dir.create(superrseq_outs_path)
+  dir.create(superrseq_seurat_outs_path)
+  dir.create(superrseq_seurat_outs_mex_path)
+  
+  ##Create all of the processed files using the above functions
+  processed_summary <- process_imgt_summary_file()
+  processed_nt_sequences <- process_imgt_nt_sequences_file()
+  processed_gapped_nt_sequences <- process_imgt_gapped_nt_sequences_file()
+  processed_aa_sequences <- process_imgt_aa_sequences_file()
+  processed_gapped_aa_sequences <- process_imgt_gapped_aa_sequences_file()
+  processed_nt_mutation_summary <- process_imgt_v_region_nt_mutation_statistics_file()
+  processed_aa_mutation_summary <- process_imgt_v_region_aa_change_statistics_file()
+  processed_hotspot_mutation_summary <- process_imgt_v_region_mutation_hotspots_files(imgt_summary_file_directory, imgt_individual_file_directory)
+  detailed_mutation_data <- extract_mutation_data(imgt_individual_file_directory)
+  
+  ##Bind them together using the sequence_id 
+  combined_tibble <- plyr::join_all(list(processed_summary,
+                                         processed_nt_sequences,
+                                         processed_gapped_nt_sequences,
+                                         processed_aa_sequences,
+                                         processed_gapped_aa_sequences,
+                                         processed_nt_mutation_summary,
+                                         processed_aa_mutation_summary,
+                                         processed_hotspot_mutation_summary),
+                                    by = "sequence_id")
+  
+  ##Add additional statistics of relavance to future study
+  combined_tibble <- combined_tibble %>%
+  mutate(fr1_nt_mut_freq = fr1_imgt_nb_of_mutations / fr1_imgt_nb_of_nucleotides * 100, ## Mutation frequencies
+         fr2_nt_mut_freq = fr2_imgt_nb_of_mutations / fr2_imgt_nb_of_nucleotides * 100,
+         fr3_nt_mut_freq = fr3_imgt_nb_of_mutations / fr3_imgt_nb_of_nucleotides * 100,
+         fr_imgt_nb_of_mutations = fr1_imgt_nb_of_mutations + fr2_imgt_nb_of_mutations + fr3_imgt_nb_of_mutations,
+         fr_imgt_nb_of_nucleotides = fr1_imgt_nb_of_nucleotides + fr2_imgt_nb_of_nucleotides + fr3_imgt_nb_of_nucleotides,
+         fr_nt_mut_freq = fr_imgt_nb_of_mutations / fr_imgt_nb_of_nucleotides * 100,
+         cdr1_nt_mut_freq = cdr1_imgt_nb_of_mutations / cdr1_imgt_nb_of_nucleotides * 100,
+         cdr2_nt_mut_freq = cdr2_imgt_nb_of_mutations / cdr2_imgt_nb_of_nucleotides * 100,
+         cdr_imgt_nb_of_mutations = cdr1_imgt_nb_of_mutations + cdr2_imgt_nb_of_mutations,
+         cdr_imgt_nb_of_nucleotides = cdr1_imgt_nb_of_nucleotides + cdr2_imgt_nb_of_nucleotides,
+         cdr_nt_mut_freq = cdr_imgt_nb_of_mutations / cdr_imgt_nb_of_nucleotides * 100,
+         cdr3_nt_mut_freq = cdr3_imgt_nb_of_mutations / cdr3_imgt_nb_of_nucleotides * 100,
+         non_junction_nt_mut_freq = (cdr_imgt_nb_of_mutations + fr_imgt_nb_of_mutations) / (cdr_imgt_nb_of_nucleotides + fr_imgt_nb_of_nucleotides) * 100,
+         v_nt_mut_freq = v_region_nb_of_mutations / v_region_nb_of_nucleotides * 100,
+         
+         fr1_nonsilent_mut_ratio = fr1_imgt_nb_of_nonsilent_mutations / fr1_imgt_nb_of_mutations, ## Nonsilent mutation ratios
+         fr2_nonsilent_mut_ratio = fr2_imgt_nb_of_nonsilent_mutations / fr2_imgt_nb_of_mutations,
+         fr3_nonsilent_mut_ratio = fr3_imgt_nb_of_nonsilent_mutations / fr3_imgt_nb_of_mutations,
+         cdr1_nonsilent_mut_ratio = cdr1_imgt_nb_of_nonsilent_mutations / cdr1_imgt_nb_of_mutations,
+         cdr2_nonsilent_mut_ratio = cdr2_imgt_nb_of_nonsilent_mutations / cdr2_imgt_nb_of_mutations,
+         cdr3_nonsilent_mut_ratio = cdr3_imgt_nb_of_nonsilent_mutations / cdr3_imgt_nb_of_mutations,
+         v_nonsilent_mut_ratio = v_region_nb_of_nonsilent_mutations / v_region_nb_of_mutations,
+         
+         fr1_transitions = (fr1_imgt_a_into_g + fr1_imgt_g_into_a + fr1_imgt_c_into_t + fr1_imgt_t_into_c), ## Transition vs transversion counts
+         fr1_transversions = fr1_imgt_nb_of_mutations - fr1_transitions,
+         fr2_transitions = (fr2_imgt_a_into_g + fr2_imgt_g_into_a + fr2_imgt_c_into_t + fr2_imgt_t_into_c),
+         fr2_transversions = fr2_imgt_nb_of_mutations - fr2_transitions,
+         fr3_transitions = (fr3_imgt_a_into_g + fr3_imgt_g_into_a + fr3_imgt_c_into_t + fr3_imgt_t_into_c),
+         fr3_transversions = fr3_imgt_nb_of_mutations - fr3_transitions,
+         cdr1_transitions = (cdr1_imgt_a_into_g + cdr1_imgt_g_into_a + cdr1_imgt_c_into_t + cdr1_imgt_t_into_c),
+         cdr1_transversions = cdr1_imgt_nb_of_mutations - cdr1_transitions,
+         cdr2_transitions = (cdr2_imgt_a_into_g + cdr2_imgt_g_into_a + cdr2_imgt_c_into_t + cdr2_imgt_t_into_c),
+         cdr2_transversions = cdr2_imgt_nb_of_mutations - cdr2_transitions,
+         cdr3_transitions = (cdr3_imgt_a_into_g + cdr3_imgt_g_into_a + cdr3_imgt_c_into_t + cdr3_imgt_t_into_c),
+         cdr3_transversions = cdr3_imgt_nb_of_mutations - cdr3_transitions,
+         non_junction_v_transitions = fr1_transitions + fr2_transitions + fr3_transitions + cdr1_transitions + cdr2_transitions,
+         non_junction_v_transversions = fr1_transversions + fr2_transversions + fr3_transversions + cdr1_transversions + cdr2_transversions,
+         
+         fr1_transition_ratio = fr1_transitions / fr1_imgt_nb_of_mutations, ## Transition ratios
+         fr2_transition_ratio = fr2_transitions / fr2_imgt_nb_of_mutations,
+         fr3_transition_ratio = fr3_transitions / fr3_imgt_nb_of_mutations,
+         cdr1_transition_ratio = cdr1_transitions / cdr1_imgt_nb_of_mutations,
+         cdr2_transition_ratio = cdr2_transitions / cdr2_imgt_nb_of_mutations,
+         cdr3_transition_ratio = cdr3_transitions / cdr3_imgt_nb_of_mutations,
+         non_junction_transition_ratio = non_junction_v_transitions / (fr1_imgt_nb_of_mutations + fr2_imgt_nb_of_mutations + fr3_imgt_nb_of_mutations + cdr1_imgt_nb_of_mutations + cdr2_imgt_nb_of_mutations),
+         
+         fr1_aa_mut_freq = fr1_imgt_nb_of_aa_changes / fr1_imgt_nb_of_aa * 100, ## Amino acid conversion frequency
+         fr2_aa_mut_freq = fr2_imgt_nb_of_aa_changes / fr2_imgt_nb_of_aa * 100,
+         fr3_aa_mut_freq = fr3_imgt_nb_of_aa_changes / fr3_imgt_nb_of_aa * 100,
+         fr_imgt_nb_of_aa_changes = fr1_imgt_nb_of_aa_changes + fr2_imgt_nb_of_aa_changes + fr2_imgt_nb_of_aa_changes,
+         fr_imgt_nb_of_aa = fr1_imgt_nb_of_aa + fr2_imgt_nb_of_aa + fr2_imgt_nb_of_aa,
+         fr_aa_mut_freq = fr_imgt_nb_of_aa_changes / fr_imgt_nb_of_aa * 100,
+         cdr1_aa_mut_freq = cdr1_imgt_nb_of_aa_changes / cdr1_imgt_nb_of_aa * 100,
+         cdr2_aa_mut_freq = cdr2_imgt_nb_of_aa_changes / cdr2_imgt_nb_of_aa * 100,
+         cdr_imgt_nb_of_aa_changes = cdr1_imgt_nb_of_aa_changes + cdr2_imgt_nb_of_aa_changes,
+         cdr_imgt_nb_of_aa = cdr1_imgt_nb_of_aa + cdr2_imgt_nb_of_aa,
+         non_junction_aa_mut_freq = (fr_imgt_nb_of_aa_changes + cdr_imgt_nb_of_aa_changes) / (fr_imgt_nb_of_aa + cdr_imgt_nb_of_aa) * 100,
+         cdr3_aa_mut_freq = cdr3_imgt_nb_of_aa_changes / cdr3_imgt_nb_of_aa * 100,
+         v_aa_mut_freq = (v_region_nb_of_aa / v_region_nb_of_aa_changes) * 100,
+         
+         contains_avy_in_fr1 = grepl("AVY", aa_fr1), ## Detects AVY in FR1
+         contains_qw_in_fr1 = grepl("QW", aa_fr1), ## Detects QW in FR1
+         
+         fr1_pct_mutations_in_hotspots = fr1_hotspot_muts / fr1_imgt_nb_of_mutations * 100, ## Hotspot mutation summary analysis
+         fr2_pct_mutations_in_hotspots = fr2_hotspot_muts / fr2_imgt_nb_of_mutations * 100,
+         fr3_pct_mutations_in_hotspots = fr3_hotspot_muts / fr3_imgt_nb_of_mutations * 100,
+         fr_hotspot_muts = fr1_hotspot_muts + fr2_hotspot_muts + fr3_hotspot_muts,
+         fr_pct_mutations_in_hotspots = fr_hotspot_muts / fr_imgt_nb_of_mutations * 100,
+         cdr1_pct_mutations_in_hotspots = cdr1_hotspot_muts / cdr1_imgt_nb_of_mutations * 100,
+         cdr2_pct_mutations_in_hotspots = cdr2_hotspot_muts / cdr2_imgt_nb_of_mutations * 100,
+         cdr_hotspot_muts = cdr1_hotspot_muts + cdr2_hotspot_muts,
+         cdr_pct_mutations_in_hotspots = cdr_hotspot_muts / cdr_imgt_nb_of_mutations * 100,
+         non_junction_pct_mutations_in_hotspots =  (fr_hotspot_muts + cdr_hotspot_muts) / (fr_imgt_nb_of_mutations + cdr_imgt_nb_of_mutations) * 100,
+         cdr3_pct_mutations_in_hotspots = cdr3_hotspot_muts / cdr3_imgt_nb_of_mutations * 100,
+         
+         fr1_pct_hotspots_mutated = fr1_hotspot_muts / fr1_hotspot_loci * 100,
+         fr2_pct_hotspots_mutated = fr2_hotspot_muts / fr2_hotspot_loci * 100,
+         fr3_pct_hotspots_mutated = fr3_hotspot_muts / fr3_hotspot_loci * 100,
+         fr_hotspot_loci = fr1_hotspot_loci + fr2_hotspot_loci + fr3_hotspot_loci,
+         fr_pct_hotspots_mutated = fr_hotspot_muts / fr_hotspot_loci * 100,
+         cdr1_pct_hotspots_mutated = cdr1_hotspot_muts / cdr1_hotspot_loci * 100,
+         cdr2_pct_hotspots_mutated = cdr2_hotspot_muts / cdr2_hotspot_loci * 100,
+         cdr_hotspot_loci = cdr1_hotspot_loci + cdr2_hotspot_loci,
+         cdr_pct_hotspots_mutated = cdr_hotspot_muts / cdr_hotspot_loci * 100,
+         non_junction_pct_hotspots_mutated = (fr_hotspot_muts + cdr_hotspot_muts) / (fr_hotspot_loci + cdr_hotspot_loci) * 100,
+         cdr3_pct_hotspots_mutated = cdr3_hotspot_muts / cdr3_hotspot_loci * 100) 
+  
+  ##Bring in processed CellRanger annotations
+  processed_cellranger_annotations <- read_csv(processed_cellranger_annotations_file)
+  
+  #Merge in the data
+  merged_tibble <- left_join(processed_cellranger_annotations, combined_tibble, by = c("indexed_contig_id" = "sequence_id"))
+  
+  ##pull out the isotypes from the heavy chains
+  isotypes <- merged_tibble %>% filter(chain_type == "igh") %>% select(indexed_barcode, isotype = c_gene)
+  isotypes$isotype <- tolower(gsub("IGH(.*)", "\\1", isotypes$isotype))
+  merged_tibble <- left_join(merged_tibble, isotypes, by = "indexed_barcode")
+  
+  ##Arrange the tibble for ease of future processing.
+
+  merged_tibble <- merged_tibble %>%
+  select(indexed_contig_id:seq,
+         chain_type, 
+         isotype,
+         reads:j_region_identity_pct,
+         nt_vdj:aa_gapped_j,
+         fr1_nt_mut_freq:contains_qw_in_fr1,
+         "v_region_nb_of_positions_including_imgt_gaps_(nt)":cdr3_imgt_very_dissimilar,
+         fr1_hotspot_loci:non_junction_hotspot_muts,
+         fr1_pct_mutations_in_hotspots:cdr3_pct_hotspots_mutated)
+
+   wide_tibble <- convert_vdj_to_wide(merged_tibble) 
+   
+   convert_wide_to_seurat(wide_tibble)
+    
+  ##Write the summary files
+  setwd(superrseq_outs_path)
+  
+  ##Return the long table
+  write_csv(merged_tibble, paste("superrseq_processed_long_imgt_output.index_", merged_tibble$sample_index[1], ".csv", sep = ""))
+  
+  ##Return the wide table
+  write_csv(wide_tibble, paste("superrseq_processed_wide_imgt_output.index_", merged_tibble$sample_index[1], ".csv", sep = ""))
+  
+  ##Return the detailed mutation data
+  write_csv(detailed_mutation_data, paste("superrseq_processed_detailed_mutation_data.index_", merged_tibble$sample_index[1], ".csv", sep = ""))
+  
+  if (return_df == TRUE) {
+  return(merged_tibble)
+  } else {
+    print("Processing complete!")
+  }
+  
+  }### End, process_imgt_output()
+
+```
+
+## batch_assign_lineages
+
+So the above two functions get you a single data frame per 10x lane run. It will happen frequently that lineage identification will need to be run across lanes and sequencing runs, so it makes sense that the lineage identification function should run independently as a stand-alone entity capable of taking multiple processed files and running lineage assignments across them. As such, the data input types should be flexible here so I've allowed for the input of a single .csv file, a directory of .csv files, a single data frame, or a list of data frames to allow for people to use this function in a more flexible way. In addition, I've included the ability to return the processed data frame instead of writing it to the working directory. Also, if the data input is a collection of .csv files, the processed output will be written there. 
+
+For the lineage assignment function, the custom Sanz lab lineage assignment is used. To assign two sequences to a lineage, the following criteria must be met:
+
+  1. Identical V gene usage
+  2. Identical J gene usage
+  3. Identical CDR3 nucleotide length
+  4. 85% homology within the CDR3 nucleotide sequence (encoded by the pct_homology variable)
+  
+In addition to assigning the lineages, this function also assesses whether or not each sequence is contained within individual indexes (a quick connectivity assessment) and returns a sample key of the processed file showing the metadata associated with each sample index.
+
+Here is the running function:
+
+```{r}
+
+#' assign_lineages
+#' 
+#' The function takes a .db file by default, and adds logical columns to aid hybrid sequence filtering
+#' @param data A flexible data input. Takes a single .csv file, a directory of .csv files, a single data frame, or a list of data frames
+#' @param pct_homology The amount of CDR3 homology required to draw a lineage connection between two sequences
+#' @param return_df Returns a data frame at the end of the function instead of writing a file
+#' @export
+
+assign_lineages <- function(data, pct_homology = 0.85, return_df = FALSE) {
+   
+  require(Biostrings)
+  require(dplyr)
+  require(readr)
+  
+  ###Identify type of data
+  if ("data.frame" %in% class(data)) {
+    data <- data
+  } else if (class(data) == "list"){
+    data <- do.call(rbind, data)
+  } else if (grepl("\\.csv", data)) {
+    
+    ## Extract the directory for the single .csv
+    subdirectory_path <- gsub("superrseq.*", "", data)
+    setwd(subdirectory_path)
+    
+    data <- read_csv(data)
+    
+  } else if (dir.exists(data)) {
+    setwd(data)
+    file_list <- list.files(data)
+    data_list <- vector("list", length = length(file_list))
+    for (i in 1:length(file_list)) {
+      data_list[[i]] <- read_csv(file_list[i])
+    }
+    data <- bind_rows(data_list)
+  }
+
+  ### Lineage assignment function
+  
+  lin_assign <- function(data) {
+    
+    ### Populate sequences
+    cdr3_seqs <- data[["cdr3_seq"]]
+    
+    ### Create the initial distance matrix
+    seq_dist_matrix <- stringDist(unique(cdr3_seqs), method = "hamming", upper = TRUE, diag = TRUE)
+    percent_homology_matrix <- 1 - (as.matrix(seq_dist_matrix) / nchar(cdr3_seqs)[1])
+    colnames(percent_homology_matrix) <- rownames(percent_homology_matrix) <- unique(cdr3_seqs)
+    
+    ### Create the sequence frequency table
+    seq_freq_table <- sort(table(cdr3_seqs), decreasing = TRUE)
+    
+    ### iterative assignment of lineages
+    
+    while (length(seq_freq_table) >= 1) {
+      
+      ### identify most abundant sequence
+      highest_freq_seq <- names(seq_freq_table)[1]
+      
+      ### Isolate the row of the highest-frequency seq
+      seq_row <- as.vector(percent_homology_matrix[highest_freq_seq,,drop = FALSE])
+      names(seq_row) <- colnames(percent_homology_matrix[highest_freq_seq,,drop = FALSE])
+      
+      ### Identify sequences within homology threshold
+      homology_names <- names(which(seq_row >= pct_homology))
+      
+      ### Find homologous sequences in the data
+      lineage_index <- which(data[["cdr3_seq"]] %in% homology_names)
+      
+      ### Assign lineage_id with the lineage id counter
+      data$lineage_id[lineage_index] <- lineage_counter
+      
+      ### Prepare indexes for sequence removal from the table and matrix
+      table_index <- which(names(seq_freq_table) %in% homology_names)
+      matrix_index <- which(colnames(percent_homology_matrix) %in% homology_names)
+      
+      ### Remove those sequences from the table and matrix
+      seq_freq_table <- seq_freq_table[-table_index]
+      percent_homology_matrix <- percent_homology_matrix[-matrix_index,-matrix_index, drop = FALSE]
+      
+      ### Click over the lineage assignment counter
+      
+      lineage_counter <<- lineage_counter + 1
+      
+    } ### End "while" loop
+    
+    return(data)
+    
+  } ### End lin_assign function
+  
+  ### Make a trimmed data frame for processing (removing light chains)
+  trimmed_data <- data %>% 
+    filter(chain_type == "igh") %>%
+    dplyr::select(indexed_barcode, v_gene, j_gene, cdr3_seq = nt_cdr3, cdr3_len = nt_cdr3_length) 
+
+  ### Extract CDR3 length, and add a placeholder for lineage id  
+  trimmed_data <- trimmed_data %>%
+    mutate(lineage_id = rep(NA))
+  
+  ### Split the list on V, J, and CDR3 length
+  split_list <- split(trimmed_data, list(factor(trimmed_data[["v_gene"]]), factor(trimmed_data[["j_gene"]]), factor(trimmed_data[["cdr3_len"]])), drop = TRUE)
+  
+  ### Initialize lineage counter
+  lineage_counter <- 1
+
+  ### Assignment visualizer
+  for (i in seq_along(split_list)) {
+    
+  if (i %% 100 == 0) {
+    
+    print(paste(i, "out of", length(split_list), "v/j/cdr3 length families assigned"))
+    
+  }  
+  
+  ### assign the lineages  
+  split_list[[i]] <- lin_assign(split_list[[i]])
+    
+  }
+  
+  ### collapse the list
+  assigned_lins <- bind_rows(split_list)
+  
+  ### assign the new lineage ids
+  assigned_lins <- assigned_lins %>% select(indexed_barcode, lineage_id)
+  
+  ### join the new lineage ids to the data
+  data <- left_join(data, assigned_lins, by = "indexed_barcode")
+  
+  ### Add in pat_lins when available
+  if ("patient_id" %in% names(data)) {
+    
+    data$pat_lin <- paste(data$patient_id, data$lineage_id, sep = "_")
+    
+  }
+
+  ### Create an index .txt file
+  split_index_list <- split(data, factor(data$sample_index))
+
+  index_reference_key <- vector("list", length = length(split_index_list))
+  
+  split_lineage_list <- vector("list", length = length(split_index_list))
+  names(split_lineage_list) <- unique(data$sample_index)
+  
+  start_metadata <- which(names(split_index_list[[1]]) == "sample_index")
+
+  end_metadata <- which(names(split_index_list[[1]]) == "seq") - 1
+
+  
+  for (i in 1:length(split_index_list)) {
+    
+    index_reference_key[[i]] <- split_index_list[[i]][1,] %>% select(start_metadata:end_metadata) 
+    
+    split_lineage_list[[i]] <- unique(split_index_list[[i]]$lineage_id)
+    data[[paste("lineage_in_index_", names(split_lineage_list)[i], sep = "")]] <- FALSE
+    
+  }
+  
+  indices <- unique(data$sample_index)
+  
+  for (i in 1:nrow(data)) {
+    
+    for (j in 1:length(indices)) {
+      
+      if (data[i,"lineage_id"] %in% split_lineage_list[[j]]) {
+        
+        data[i,paste("lineage_in_index_", names(split_lineage_list)[j], sep = "")] <- TRUE
+        
+      }
+      
+    }
+    
+  }
+  
+  index_reference_key <- bind_rows(index_reference_key)
+  
+  write_csv(index_reference_key, "index_reference_key.csv")
+  
+  write_csv(data, "lineage_processed_data.csv")
+  
+  ### return the data
+   if (return_df == TRUE) {
+  return(data)
+  } else {
+    print("Processing complete!")
+  }
+
+}
+
+```
+
+In addition to all of this, it seems that a dedicated function to extract detailed hotspot mutation data will be necessary. Unfortunately those data will have to have a different format as a result of the mutation-level metadata. The need here is a function that walks through the individual output files, and creates a df that contains all of the individual sequence mutations as rows in a table. This function is also embedded in the above `process_imgt_output()` script.
+
+```{r}
+
+extract_mutation_data <- function(imgt_individual_file_directory, return_df = FALSE) {
+  
+   ##Set working directory for individual files
+    setwd(imgt_individual_file_directory)
+    
+    ##Get the individual file list
+    file_list <- list.files(imgt_individual_file_directory)
+    
+    ##Initialize a list with an element for each sequence
+    sequence_list <- vector("list", length = length(file_list))
+    
+    names(sequence_list) <- file_list
+    
+    ##Find the hotspot mutations for each individual sequence
+    for (i in 1:length(file_list)) {
+      
+      #Read in the individual file
+      seq <- read_file(file_list[i])
+      
+      #Pull the hotspot text chunk
+      hotspot_chunk <- gsub(".*and hotspots motifs\\\n(.*)\\\n+12.*.", "\\1", seq)
+      
+      trimmed_hotspot_chunk <- gsub("(.)\\\n+$", "\\1", hotspot_chunk)
+      
+      #Break the chunk into individual mutations
+      mutation_string <- str_split(trimmed_hotspot_chunk, "\n")[[1]]
+      if (mutation_string == "") {next()}
+      
+      #Retain the indexed_contig_id data
+      mutation_df <- tibble("indexed_contig_id" = c(rep(file_list[i], length(mutation_string))))
+      
+      #Add a column of the raw data
+      mutation_df$raw_data <- mutation_string
+      #Extract the V gene
+      mutation_df$v_gene <- gsub(".*(IG.*?);.*", "\\1", mutation_df$raw_data)
+      #Extract the V gene region
+      mutation_df$mut_region <- gsub("^.*?;(.*?);.*", "\\1", mutation_df$raw_data)
+      #Extract the nt position of the mutation
+      mutation_df$nt_position <- gsub(".*[a,c,t,g]([0-9]+)>[a,c,t,g].*", "\\1", mutation_df$raw_data)
+      
+      #Add germline nt identity
+      mutation_df$nt_germline <- gsub(".*([a,c,t,g])[0-9]+>[a,c,t,g].*", "\\1", mutation_df$raw_data)
+      #Extract nt mutation identity
+      mutation_df$nt_mutation <- gsub(".*[a,c,t,g][0-9]+>([a,c,t,g]).*", "\\1", mutation_df$raw_data)
+      
+      #Determine hotspot mutation status
+      mutation_df$hotspot_mutation <- grepl("\\[", mutation_df$raw_data)
+      #If hotspot, extract type
+      mutation_df$hotspot_type <- ifelse(mutation_df$hotspot_mutation, gsub(".*?\\[([a,c,t,g]+) .*", "\\1", mutation_df$raw_data), NA)
+      
+      #Determine coding mutation status
+      mutation_df$coding_mutation <- grepl("\\(", mutation_df$raw_data)
+      #Extract the aa position of the mutation
+      mutation_df$aa_position <- ifelse(mutation_df$coding_mutation, gsub(".*?\\,[A-Z]([0-9]+).*", "\\1", mutation_df$raw_data), NA)
+      #Extract the aa germline identity
+      mutation_df$aa_germline <- ifelse(mutation_df$coding_mutation, gsub(".*?\\,([A-Z])[0-9]+.*", "\\1", mutation_df$raw_data), NA)
+      #If coding mutation, add aa_mutation
+      mutation_df$aa_mutation <- ifelse(mutation_df$coding_mutation, gsub(".*[A-Z][0-9]+>([A-Z]).*", "\\1", mutation_df$raw_data),
+                                        NA)
+      #If coding mutation, extract chemistry change
+      mutation_df$aa_change_chemistry <- ifelse(mutation_df$coding_mutation, gsub(".*\\((.*)\\).*", "\\1", mutation_df$raw_data),
+                                        NA)
+      
+      mutation_df <- mutation_df %>% select(-raw_data)
+      
+      mutation_df$nt_position <- as.numeric(mutation_df$nt_position)
+      
+      sequence_list[[i]] <- mutation_df
+  
+    }
+    
+    all_mutations_data <- bind_rows(sequence_list)
+    
+    all_mutations_data$indexed_contig_id <- gsub("(.*)_[0-9]+$", "\\1", all_mutations_data$indexed_contig_id)
+    
+    setwd("..")
+    
+    write_csv(all_mutations_data, "superrseq_processed_detailed_mutation_data.csv")
+    
+    if (return_df == TRUE) {return(all_mutations_data)}
+    
+}
+
+```
+
+Tha seems to work, I will be plugging that into the full function.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

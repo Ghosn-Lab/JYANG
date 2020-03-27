@@ -1,0 +1,144 @@
+---
+title: "Converting 10x VDJ data to Seurat Formatting"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+### Overview
+
+In talking with Eliver's group, it's clear to me that it will be critical to plug the work that I have been doing with repertoire analysis into a seurat-compatible pipeline. This poses some issues, not the least of which is that all of the data that I work with now is organized with each row being a BCR sequence, meaning that most barcodes have two rows - the heavy and light chains of the BCR. Also, Seurat can't use catagorical variables effectively so I need to be able pull factor data apart to be loaded up as metadata. I suppose the first step is to just use the chain types to split the data frame down. I'm just going to go at this thing and see where I get to. The following is the processed test VDJ data from the back end of the process_imgt_outputs pipeline (the merged_table).
+
+```{r}
+df <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/superrseq_outs/superrseq_processed_imgt_output.index_32.csv")
+```
+
+First I think I need to split down into heavy chain and light chain tables.
+
+```{r}
+
+heavy_df <- df %>% filter(chain_type == "igh")
+light_df <- df %>% filter(chain_type != "igh")
+
+names_heavy_df <- paste("hc", names(heavy_df), sep = "_")
+
+```
+
+It occurs to me that I should pull the sample metadata out before I do this. Those data exist in the metadata csv regardless
+
+```{r}
+
+sample_metadata_start_index <- which(names(df) == "indexed_barcode") + 1  
+
+sample_metadata_end_index <- which(names(df) == "seq") - 1
+
+metadata_columns <- c(sample_metadata_start_index:sample_metadata_end_index)
+
+index_metadata <- df %>% select(all_of(metadata_columns))
+
+trimmed_df <- df %>% select(-all_of(metadata_columns))
+
+heavy_df <- trimmed_df %>% filter(chain_type == "igh")
+light_df <- trimmed_df %>% filter(chain_type != "igh")
+
+names(heavy_df) <- paste("hc", names(heavy_df), sep = "_")
+names(light_df) <- paste("lc", names(light_df), sep = "_")
+
+names(heavy_df)[2] <- names(light_df)[2] <- names(trimmed_df)[2]
+
+wide_df <- left_join(heavy_df, light_df, by = "indexed_barcode")
+
+```
+
+Good, now I need to identify the columns that are non-numeric that will need to be treated as metadata.
+
+```{r}
+
+numeric_index <- map_lgl(wide_df, ~ class(.) == "numeric")
+
+numeric_wide_df <- wide_df %>% select(indexed_barcode, all_of(which(numeric_index)))
+metadata_wide_df <- wide_df %>% select(indexed_barcode, all_of(which(!numeric_index)))
+
+```
+
+Now to parse down into information of value.
+
+```{r}
+
+valuable_metadata <- metadata_wide_df %>% select(indexed_barcode,
+                                                 hc_indexed_contig_id,
+                                                hc_chain_type:hc_multiple_j_alleles_possible,
+                                                 hc_cdr3_boman_predicts_protein_interaction,
+                                                 hc_contains_avy_in_fr1:lc_indexed_contig_id,
+                                                 lc_chain_type:lc_multiple_j_alleles_possible)
+
+nt_conversion_ind <- grepl("into", names(numeric_wide_df))
+
+aa_conversion_ind <- grepl("imgt_[\\+,\\-]", names(numeric_wide_df))
+
+gapped_sequence_ind <- grepl("positions", names(numeric_wide_df))
+
+valuable_numeric_data <- numeric_wide_df %>% select(-which(nt_conversion_ind), 
+                                                    -which(aa_conversion_ind), 
+                                                    -which(gapped_sequence_ind),
+                                                    -(lc_cdr3_net_charge:lc_cdr3_kf_surrounding_hydrophobicity),
+                                                    -(hc_cdr3_net_charge:hc_cdr3_kf_surrounding_hydrophobicity))
+
+pct_freq_ind <- grepl("pct", names(valuable_numeric_data)) | grepl("freq", names(valuable_numeric_data))
+
+ratio_ind <- grepl("ratio", names(valuable_numeric_data))
+
+valuable_numeric_data <- valuable_numeric_data %>% 
+  mutate_if(pct_freq_ind, ~round(., 0)) %>%
+  mutate_if(ratio_ind, ~ round(. * 100, 0))
+
+integer_data <- valuable_numeric_data %>% 
+  select(-1) %>%
+  mutate_all(~as.integer(.))
+
+```
+
+Ok, let's start there. So for the reading of feature data, I need 3 files. One is the matrix in .mtx format. The second is a 'features' .tsv containing all of the feature naming data. The last is the 'barcodes' .tsv containing the cell barcode information. For organization of these files, each feature should represent a row, and each barcode should represent a column. Let's start by making a matrix in the correct format.
+
+```{r}
+
+formatted_matrix <- as.matrix(integer_data)
+rownames(formatted_matrix) <- valuable_numeric_data$indexed_barcode
+
+formatted_matrix <- t(formatted_matrix)
+
+features_file <- tibble("gene_id" = rownames(formatted_matrix),
+                        "gene_name" = rownames(formatted_matrix),
+                        "type_of_feature" = "CUSTOM")
+
+barcodes_file <- tibble("barcode" = colnames(formatted_matrix))
+
+matrix_object <- Matrix::Matrix(formatted_matrix, sparse = TRUE)
+
+write_tsv(features_file, "/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/superrseq_outs/outs_for_seurat/superrseq_vdj_features/features.tsv")
+
+write_tsv(barcodes_file, "/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/superrseq_outs/outs_for_seurat/superrseq_vdj_features/barcodes.tsv")
+
+library(Matrix)
+
+writeMM(matrix_object, "/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/superrseq_outs/outs_for_seurat/superrseq_vdj_features/matrix.mtx")
+
+```
+
+I think that might do it.
+
+I will plug that in and see if I can make it work.
+
+
+
+
+
+
+
+
+
+
+
+

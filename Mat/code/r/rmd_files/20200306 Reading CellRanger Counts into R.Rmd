@@ -1,0 +1,165 @@
+---
+title: "20200306 Reading seurat data and integrating with the vdj pipeline"
+output: html_document
+---
+
+
+## Overview
+
+I have been working hard on getting VDJ data into seurat (I'm close), but I also need to go the other way for parts of this pipeline. I've been provided with filtered feature files which I assume are a result of CellRanger. I am going to open them up here and just play around with them a bit.
+
+```{r}
+
+library(tidyverse)
+library(Matrix)
+
+```
+
+Let's pull in the data for the filtered counts matrix
+
+```{r}
+
+counts_matrix <- readMM("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/filtered_features/matrix.mtx.gz")
+
+temp <- as.matrix(counts_matrix)
+
+temp[1:6,1:6]
+
+dim(temp)
+
+```
+
+Well that's pretty big. looks like 33,600 features across 4k barcodes. Let's pull the barcodes.
+
+```{r}
+
+features <- read_tsv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/filtered_features/features.tsv.gz", col_names = c("feature_id", "name", "feature_type"))
+
+barcodes <- read_tsv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/filtered_features/barcodes.tsv.gz", col_names = c("barcode"))
+
+```
+
+That should be good! Let me orient the matrix correctly.
+
+```{r}
+
+oriented_matrix <- t(temp)
+rm(temp)
+
+rownames(oriented_matrix) <- barcodes$barcode
+table(features$feature_type)
+
+```
+
+Ok, for now I want to look at just the antibody capture data.
+
+```{r}
+
+ab_ind <- which(features$feature_type == "Antibody Capture")
+
+ab_matrix <- oriented_matrix[,ab_ind]
+
+colnames(ab_matrix) <- features$name[ab_ind]
+
+ab_matrix[1:6,] 
+
+```
+
+Fantastic. Now I want to filter down onto barcodes that I have VDJ data for. Also, I'd like to also have the gene expression data for those surface expression targets.
+
+```{r}
+
+ab_features <- features %>% filter(feature_type == "Antibody Capture") %>% .$name
+
+ab_features <- gsub("(.*)_.*", "\\1", ab_features)
+
+ab_features
+
+features_test_index <- vector("integer")
+
+for (i in 1:length(ab_features)) {
+  
+  ind <- which(grepl(ab_features[i], features$name))
+  features_test_index <- c(features_test_index, ind)
+  
+}
+
+unfiltered_features <- features[features_test_index,]
+
+manually_selected_features <- c(1, 5, 6, 7, 8, 11, 13, 14, 15, 17, 21, 26, 42, 43, 44, 45, 51, 52, 53, 54, 55, 56, 57, 63, 65, 67, 68, 69, 70, 71, 72, 73, 74, 82, 86, 87, 88, 89, 96, 98, 101, 106, 108:127, 129:133)
+
+manually_selected_faeture_names <- unfiltered_features[manually_selected_features,]$name
+
+manual_feature_ind <- which(features$name %in% manually_selected_faeture_names)
+
+curated_matrix <- oriented_matrix[,manual_feature_ind]
+
+colnames(curated_matrix) <- features$name[manual_feature_ind]
+
+```
+
+Neat. Now I will pull in my barcodes from the VDJ side. For now I will just focus on the heavy chains for ease of use.
+
+```{r}
+
+vdj_data <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/lineage_processed_data.csv") %>% filter(chain_type == "igh")
+
+vdj_selected_barcodes <- vdj_data$indexed_barcode
+
+rownames(curated_matrix) <- gsub("1", "32", rownames(curated_matrix))
+
+filtered_curated_matrix <- curated_matrix[which(rownames(curated_matrix) %in% vdj_selected_barcodes),]
+
+dim(filtered_curated_matrix)
+
+```
+
+Well look at that. now we should be able to join them.
+
+```{r}
+
+expr_data <- as_tibble(filtered_curated_matrix, rownames = "indexed_barcode")
+
+all_data <- left_join(expr_data, vdj_data, by = "indexed_barcode")
+
+ggplot(all_data, aes(x = CD27_TotalSeqC, y = CD38, col = isotype)) + geom_point(position = "jitter") + scale_x_log10() 
+
+ggplot(all_data, aes(x = CD27_TotalSeqC, y = CD38, col = v_nt_mut_freq)) + geom_point(position = "jitter") + scale_x_log10() + scale_color_viridis_c()
+
+ggplot(all_data, aes(x = CD27_TotalSeqC, y = CD138_TotalSeqC, col = v_nt_mut_freq)) + geom_point(position = "jitter") + scale_x_log10() + scale_y_log10() + scale_color_viridis_c()
+
+
+write_csv(all_data, "/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/analysis_outs/visualization_testing_set.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

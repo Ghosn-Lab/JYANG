@@ -1,0 +1,766 @@
+IMGT/HighV-QUEST version: 1.1.1
+IMGT/V-QUEST program version: 3.4.17; IMGT/V-QUEST reference directory release:  
+Species:	Homo sapiens (human)
+Receptor type or locus:	IG
+IMGT directory reference set:	F+ORF+ in-frame P
+Search for insertions and deletions:	yes
+
+A. Detailed results for the IMGT/V-QUEST analysed sequences
+
+Number of analysed sequences: 1
+
+------------------------------
+
+
+Sequence number 1: CGAGCCATCTCCAGGG-32_contig_1
+compared with the Homo sapiens (human) IG set from the IMGT reference directory
+
+Analysed sequence length: 571.
+
+Sequence analysis category: 2 (indel search & correction)
+
+>CGAGCCATCTCCAGGG-32_contig_1
+agctctgagagaggagcccagccctgggattttcaggtgttttcatttggtgatcaggac
+tgaacagagagaactcaccatggagtttgggctgagctggctttttcttgtggctatttt
+aaaaggtgtccagtgtgaggtgcaactgttggagtctgggggaggcttggtacagcccgg
+ggggtccctgagactctcctgtgcaacctctggattcacctttagcaactatgccatgac
+ctgggtccgccaggctccaagtaaggggctggagtgggtctcaagtattactggaagtgg
+tggtggcacatactacgcacactccgtgaagggccggttcaccatctccagagacaattc
+caagaacacgctgtatctccaaatgaacagcctgagagccgaggacacggccgtatatta
+ctgtgcgaaacagggtgcgtatagcagtggctggtcccgtttcgactggggccagggaac
+cctggtcatcgtctcctcagggagtgcatccgccccaacccttttccccctcgtctcctg
+tgagaattccccgtcggatacgagcagcgtg
+
+Result summary:
+
+IMGT/V-QUEST results:
+ Productive IGH rearranged sequence (no stop codon and in-frame junction)
+
+V-GENE and allele;Homsap IGHV3-23*01 F, or Homsap IGHV3-23D*01 F; score = 1309; identity = 95.14% (274/288 nt)
+J-GENE and allele;Homsap IGHJ4*02 F; score = 159; identity = 81.25% (39/48 nt)
+D-GENE and allele by IMGT/JunctionAnalysis;Homsap IGHD6-19*01 F;D-REGION is in reading frame 1
+FR-IMGT lengths, CDR-IMGT lengths and AA JUNCTION;[25.17.38.11];[8.8.14];CAKQGAYSSGWSRFDW 
+
+
+Closest V-REGIONs (evaluated from the V-REGION first nucleotide to the 2nd-CYS codon)
+
+                                    Score       Identity
+M99660 Homsap IGHV3-23*01 F         1309        95.14% (274/288 nt)
+AC244492 Homsap IGHV3-23D*01 F      1309        95.14% (274/288 nt)
+AC245166 Homsap IGHV3-23*04 F       1300        94.79% (273/288 nt)
+M35415 Homsap IGHV3-23*02 F         1291        94.44% (272/288 nt)
+AY757302 Homsap IGHV3-23*05 F       1273        93.75% (270/288 nt)
+
+1. Alignment for V-GENE
+
+                                    <---------------------------------- FR1-IMGT ---------------
+CGAGCCATCTCCAGGG-32_contig_1        gaggtgcaactgttggagtctggggga...ggcttggtacagcccggggggtccctgaga
+M99660 Homsap IGHV3-23*01 F         --------g------------------...--------------t---------------
+AC244492 Homsap IGHV3-23D*01 F      --------g------------------...--------------t---------------
+AC245166 Homsap IGHV3-23*04 F       --------g---g--------------...--------------t---------------
+M35415 Homsap IGHV3-23*02 F         --------g------------------...--------------t---------------
+AY757302 Homsap IGHV3-23*05 F       --------g------------------...--------------t---------------
+
+                                    ----------------->______________ CDR1-IMGT ___________<-----
+CGAGCCATCTCCAGGG-32_contig_1        ctctcctgtgcaacctctggattcaccttt............agcaactatgccatgacc
+M99660 Homsap IGHV3-23*01 F         ------------g-----------------............----g-----------g-
+AC244492 Homsap IGHV3-23D*01 F      ------------g-----------------............----g-----------g-
+AC245166 Homsap IGHV3-23*04 F       ------------g-----------------............----g-----------g-
+M35415 Homsap IGHV3-23*02 F         ------------g-----------------............----g-----------g-
+AY757302 Homsap IGHV3-23*05 F       ------------g-----------------............----g-----------g-
+
+                                    --------------- FR2-IMGT ------------------->___________ CDR
+CGAGCCATCTCCAGGG-32_contig_1        tgggtccgccaggctccaagtaaggggctggagtgggtctcaagtattactggaagt...
+M99660 Homsap IGHV3-23*01 F         ------------------g-g---------------------gc-----g---t---...
+AC244492 Homsap IGHV3-23D*01 F      ------------------g-g---------------------gc-----g---t---...
+AC245166 Homsap IGHV3-23*04 F       ------------------g-g---------------------gc-----g---t---...
+M35415 Homsap IGHV3-23*02 F         ------------------g-g---------------------gc-----g---t---...
+AY757302 Homsap IGHV3-23*05 F       ------------------g-g---------------------gc----ta-a-c---...
+
+                                    2-IMGT ________<--------------------------------------------
+CGAGCCATCTCCAGGG-32_contig_1        ...ggtggtggcacatactacgcacactccgtgaag...ggccggttcaccatctccaga
+M99660 Homsap IGHV3-23*01 F         ...------a--------------g-----------...---------------------
+AC244492 Homsap IGHV3-23D*01 F      ...------a--------------g-----------...---------------------
+AC245166 Homsap IGHV3-23*04 F       ...------a--------------g-----------...---------------------
+M35415 Homsap IGHV3-23*02 F         ...------a------------g-g-----------...-----------------a---
+AY757302 Homsap IGHV3-23*05 F       ...---a--a----------t---g-----------...---------------------
+
+                                    --------- FR3-IMGT -----------------------------------------
+CGAGCCATCTCCAGGG-32_contig_1        gacaattccaagaacacgctgtatctccaaatgaacagcctgagagccgaggacacggcc
+M99660 Homsap IGHV3-23*01 F         --------------------------g---------------------------------
+AC244492 Homsap IGHV3-23D*01 F      --------------------------g---------------------------------
+AC245166 Homsap IGHV3-23*04 F       --------------------------g---------------------------------
+M35415 Homsap IGHV3-23*02 F         --------------------------g---------------------------------
+AY757302 Homsap IGHV3-23*05 F       --------------------------g---------------------------------
+
+                                    ----------->_________________ CDR3-IMGT ______________
+CGAGCCATCTCCAGGG-32_contig_1        gtatattactgtgcgaaacagggtgcgtatagcagtggctggtcccgtttcgactggggc
+M99660 Homsap IGHV3-23*01 F         ------------------g-
+AC244492 Homsap IGHV3-23D*01 F      ------------------g-
+AC245166 Homsap IGHV3-23*04 F       ------------------g-
+M35415 Homsap IGHV3-23*02 F         ------------------g-
+AY757302 Homsap IGHV3-23*05 F       ------------------
+
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        cagggaaccctggtcatcgtctcctcagggagtgcatccgccccaacccttttccccctc
+M99660 Homsap IGHV3-23*01 F         
+AC244492 Homsap IGHV3-23D*01 F      
+AC245166 Homsap IGHV3-23*04 F       
+M35415 Homsap IGHV3-23*02 F         
+AY757302 Homsap IGHV3-23*05 F       
+
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        gtctcctgtgagaattccccgtcggatacgagcagcgtg
+M99660 Homsap IGHV3-23*01 F         
+AC244492 Homsap IGHV3-23D*01 F      
+AC245166 Homsap IGHV3-23*04 F       
+M35415 Homsap IGHV3-23*02 F         
+AY757302 Homsap IGHV3-23*05 F       
+
+
+2. Alignment for D-GENE
+
+                                    Score       Identity
+X97051 Homsap IGHD6-19*01 F         66          93.33% (14/15 nt)
+X97051 Homsap IGHD6-25*01 F         57          86.67% (13/15 nt)
+X13972 Homsap IGHD6-13*01 F         48          80.00% (12/15 nt)
+X97051 Homsap IGHD5-18*01 F         31          64.71% (11/17 nt)
+X13972 Homsap IGHD5-5*01 F          31          64.71% (11/17 nt)
+
+CGAGCCATCTCCAGGG-32_contig_1        cagggtgcgtatagcagtggc
+X97051 Homsap IGHD6-19*01 F         ......-g-------------tggtac
+X97051 Homsap IGHD6-25*01 F         ......-g---------c---tac
+X13972 Homsap IGHD6-13*01 F         ......-g---------ca--tggtac
+X97051 Homsap IGHD5-18*01 F         ....---ga--c---ta---ttac
+X13972 Homsap IGHD5-5*01 F          ....---ga--c---ta---ttac
+
+
+3. Alignment for J-GENE
+
+                                    Score       Identity
+X86355 Homsap IGHJ4*02 F            159         81.25% (39/48 nt)
+J00256 Homsap IGHJ4*01 F            150         79.17% (38/48 nt)
+M25625 Homsap IGHJ4*03 F            150         79.17% (38/48 nt)
+X86355 Homsap IGHJ5*02 F            129         72.55% (37/51 nt)
+J00256 Homsap IGHJ1*01 F            125         71.15% (37/52 nt)
+
+
+CGAGCCATCTCCAGGG-32_contig_1        cagggtgcgtatagcagtggctggtcccgtttcgactggggccagggaaccctggtcatc
+X86355 Homsap IGHJ4*02 F            ......................ac-a-tt-ga-t------------------------c-
+J00256 Homsap IGHJ4*01 F            ......................ac-a-tt-ga-t----------a-------------c-
+M25625 Homsap IGHJ4*03 F            ......................-c-a-tt-ga-t----------a--g----------c-
+X86355 Homsap IGHJ5*02 F            ...................a-aac-ggttcga-cc-----------------------c-
+J00256 Homsap IGHJ1*01 F            ..................-ctgaa-a-ttccagc-------------c----------c-
+
+CGAGCCATCTCCAGGG-32_contig_1        gtctcctcagggagtgcatccgccccaacccttttccccctcgtctcctgtgagaattcc
+X86355 Homsap IGHJ4*02 F            ----------
+J00256 Homsap IGHJ4*01 F            ----------
+M25625 Homsap IGHJ4*03 F            ----------
+X86355 Homsap IGHJ5*02 F            ----------
+J00256 Homsap IGHJ1*01 F            ----------
+
+CGAGCCATCTCCAGGG-32_contig_1        ccgtcggatacgagcagcgtg
+X86355 Homsap IGHJ4*02 F            
+J00256 Homsap IGHJ4*01 F            
+M25625 Homsap IGHJ4*03 F            
+X86355 Homsap IGHJ5*02 F            
+J00256 Homsap IGHJ1*01 F            
+
+
+4. Results of IMGT/JunctionAnalysis
+
+Maximum number of accepted mutations in: 3'V-REGION = 2, D-REGION = 4, 5'J-REGION = 2
+
+Maximum number of accepted D-GENE: 1
+
+Analysis of the JUNCTION
+
+Input                          V name              3'V-REGION      N1           D-REGION       
+CGAGCCATCTCCAGGG-32_contig_1   Homsap_IGHV3-23*01  tgtgcgaaa..  cagggtgc  ..gtatagcagtggctggt..
+
+
+Input                               N2             5'J-REGION           J name              D n
+CGAGCCATCTCCAGGG-32_contig_1     cccgtttcg  ............actgg  Homsap_IGHJ4*02  Homsap_IGHD6-19
+
+
+Input                          ame  Vmut  Dmut  Jmut   Ngc 
+CGAGCCATCTCCAGGG-32_contig_1   *01   0     0     0    12/17
+
+D-REGION is in reading frame 1
+
+Translation of the JUNCTION
+
+                             104 105 106 107 108 109 110 111 112.1 112 113 114 115 116 117
+                              C   A   K   Q   G   A   Y   S   S   G   W   S   R   F   D   
+CGAGCCATCTCCAGGG-32_contig_1 tgt gcg aaa cag ggt gcg tat agc  agt  ggc tgg tcc cgt ttc gac
+
+
+                              118 frame CR3-IMGT Molecular   pI
+                             W         length     mass   
+CGAGCCATCTCCAGGG-32_contig_1  tgg   +     14     1,849.02   8.22
+
+
+Be aware that some allele reference sequences may be incomplete or from cDNAs.
+In those cases, IMGT/JunctionAnalysis uses automatically the allele *01 for the analysis of the JUNCTION.
+5. Sequence of the JUNCTION ('nt' and 'AA')
+
+
+104   105   106   107   108   109   110   111   112.1 112   113   114   115   116   117   118   
+ C     A     K     Q     G     A     Y     S     S     G     W     S     R     F     D     W    
+tgt   gcg   aaa   cag   ggt   gcg   tat   agc   agt   ggc   tgg   tcc   cgt   ttc   gac   tgg
+
+
+Input for IMGT/JunctionAnalysis
+
+>CGAGCCATCTCCAGGG-32_contig_1,Homsap_IGHV3-23*01,Homsap_IGHJ4*02
+tgtgcgaaacagggtgcgtatagcagtggctggtcccgtttcgactgg
+
+6. V-REGION alignment with FR-IMGT and CDR-IMGT delimitations per codon
+
+                                    <---------------------------------------------  FR1 - IMGT  
+                                    1               5                   10                  15  
+CGAGCCATCTCCAGGG-32_contig_1        gag gtg caa ctg ttg gag tct ggg gga ... ggc ttg gta cag ccc 
+M99660 Homsap IGHV3-23*01 F         --- --- --g --- --- --- --- --- --- ... --- --- --- --- --t 
+AC244492 Homsap IGHV3-23D*01 F      --- --- --g --- --- --- --- --- --- ... --- --- --- --- --t 
+AC245166 Homsap IGHV3-23*04 F       --- --- --g --- g-- --- --- --- --- ... --- --- --- --- --t 
+M35415 Homsap IGHV3-23*02 F         --- --- --g --- --- --- --- --- --- ... --- --- --- --- --t 
+AY757302 Homsap IGHV3-23*05 F       --- --- --g --- --- --- --- --- --- ... --- --- --- --- --t 
+
+                                    ------------------------------------------> ________________
+                                                    20                  25                  30  
+CGAGCCATCTCCAGGG-32_contig_1        ggg ggg tcc ctg aga ctc tcc tgt gca acc tct gga ttc acc ttt 
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+AC244492 Homsap IGHV3-23D*01 F      --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+AC245166 Homsap IGHV3-23*04 F       --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+M35415 Homsap IGHV3-23*02 F         --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+AY757302 Homsap IGHV3-23*05 F       --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+
+                                    __  CDR1 - IMGT  ______________ <-------------------------- 
+                                                    35                  40                  45  
+CGAGCCATCTCCAGGG-32_contig_1        ... ... ... ... agc aac tat gcc atg acc tgg gtc cgc cag gct 
+M99660 Homsap IGHV3-23*01 F         ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+AC244492 Homsap IGHV3-23D*01 F      ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+AC245166 Homsap IGHV3-23*04 F       ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+M35415 Homsap IGHV3-23*02 F         ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+AY757302 Homsap IGHV3-23*05 F       ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+
+                                     FR2 - IMGT  -------------------------> ______________  CDR2
+                                                    50                  55                  60  
+CGAGCCATCTCCAGGG-32_contig_1        cca agt aag ggg ctg gag tgg gtc tca agt att act gga agt ... 
+M99660 Homsap IGHV3-23*01 F         --- g-g --- --- --- --- --- --- --- gc- --- -g- --t --- ... 
+AC244492 Homsap IGHV3-23D*01 F      --- g-g --- --- --- --- --- --- --- gc- --- -g- --t --- ... 
+AC245166 Homsap IGHV3-23*04 F       --- g-g --- --- --- --- --- --- --- gc- --- -g- --t --- ... 
+M35415 Homsap IGHV3-23*02 F         --- g-g --- --- --- --- --- --- --- gc- --- -g- --t --- ... 
+AY757302 Homsap IGHV3-23*05 F       --- g-g --- --- --- --- --- --- --- gc- --- ta- a-c --- ... 
+
+                                     - IMGT  __________ <---------------------------------------
+                                                    65                  70                  75  
+CGAGCCATCTCCAGGG-32_contig_1        ... ggt ggt ggc aca tac tac gca cac tcc gtg aag ... ggc cgg 
+M99660 Homsap IGHV3-23*01 F         ... --- --- a-- --- --- --- --- g-- --- --- --- ... --- --- 
+AC244492 Homsap IGHV3-23D*01 F      ... --- --- a-- --- --- --- --- g-- --- --- --- ... --- --- 
+AC245166 Homsap IGHV3-23*04 F       ... --- --- a-- --- --- --- --- g-- --- --- --- ... --- --- 
+M35415 Homsap IGHV3-23*02 F         ... --- --- a-- --- --- --- -g- g-- --- --- --- ... --- --- 
+AY757302 Homsap IGHV3-23*05 F       ... --- a-- a-- --- --- --t --- g-- --- --- --- ... --- --- 
+
+                                    -------------------------------  FR3 - IMGT  ---------------
+                                                    80                  85                  90  
+CGAGCCATCTCCAGGG-32_contig_1        ttc acc atc tcc aga gac aat tcc aag aac acg ctg tat ctc caa 
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- --- --- --- --- --g --- 
+AC244492 Homsap IGHV3-23D*01 F      --- --- --- --- --- --- --- --- --- --- --- --- --- --g --- 
+AC245166 Homsap IGHV3-23*04 F       --- --- --- --- --- --- --- --- --- --- --- --- --- --g --- 
+M35415 Homsap IGHV3-23*02 F         --- --- --- --a --- --- --- --- --- --- --- --- --- --g --- 
+AY757302 Homsap IGHV3-23*05 F       --- --- --- --- --- --- --- --- --- --- --- --- --- --g --- 
+
+                                    ------------------------------------------------------> ____
+                                                    95                  100             104 
+CGAGCCATCTCCAGGG-32_contig_1        atg aac agc ctg aga gcc gag gac acg gcc gta tat tac tgt gcg 
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+AC244492 Homsap IGHV3-23D*01 F      --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+AC245166 Homsap IGHV3-23*04 F       --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+M35415 Homsap IGHV3-23*02 F         --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+AY757302 Homsap IGHV3-23*05 F       --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+                                    __________________  CDR3 - IMGT  __________________
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        aaa cag ggt gcg tat agc agt ggc tgg tcc cgt ttc gac tgg ggc 
+M99660 Homsap IGHV3-23*01 F         --- g-
+AC244492 Homsap IGHV3-23D*01 F      --- g-
+AC245166 Homsap IGHV3-23*04 F       --- g-
+M35415 Homsap IGHV3-23*02 F         --- g-
+AY757302 Homsap IGHV3-23*05 F       ---
+
+                                    
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        cag gga acc ctg gtc atc gtc tcc tca ggg agt gca tcc gcc cca 
+M99660 Homsap IGHV3-23*01 F         
+AC244492 Homsap IGHV3-23D*01 F      
+AC245166 Homsap IGHV3-23*04 F       
+M35415 Homsap IGHV3-23*02 F         
+AY757302 Homsap IGHV3-23*05 F       
+
+                                    
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        acc ctt ttc ccc ctc gtc tcc tgt gag aat tcc ccg tcg gat acg 
+M99660 Homsap IGHV3-23*01 F         
+AC244492 Homsap IGHV3-23D*01 F      
+AC245166 Homsap IGHV3-23*04 F       
+M35415 Homsap IGHV3-23*02 F         
+AY757302 Homsap IGHV3-23*05 F       
+
+                                    
+                                    
+CGAGCCATCTCCAGGG-32_contig_1        agc agc gtg
+M99660 Homsap IGHV3-23*01 F         
+AC244492 Homsap IGHV3-23D*01 F      
+AC245166 Homsap IGHV3-23*04 F       
+M35415 Homsap IGHV3-23*02 F         
+AY757302 Homsap IGHV3-23*05 F       
+
+
+7. V-REGION translation
+
+                                    <---------------------------------------------  FR1 - IMGT  
+                                    1               5                   10                  15  
+                                     E   V   Q   L   L   E   S   G   G       G   L   V   Q   P  
+CGAGCCATCTCCAGGG-32_contig_1        gag gtg caa ctg ttg gag tct ggg gga ... ggc ttg gta cag ccc 
+                                                                                                
+M99660 Homsap IGHV3-23*01 F         --- --- --g --- --- --- --- --- --- ... --- --- --- --- --t 
+
+                                    ------------------------------------------> ________________
+                                                    20                  25                  30  
+                                     G   G   S   L   R   L   S   C   A   T   S   G   F   T   F  
+CGAGCCATCTCCAGGG-32_contig_1        ggg ggg tcc ctg aga ctc tcc tgt gca acc tct gga ttc acc ttt 
+                                                                         A                      
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- g-- --- --- --- --- --- 
+
+                                    __  CDR1 - IMGT  ______________ <-------------------------- 
+                                                    35                  40                  45  
+                                                     S   N   Y   A   M   T   W   V   R   Q   A  
+CGAGCCATCTCCAGGG-32_contig_1        ... ... ... ... agc aac tat gcc atg acc tgg gtc cgc cag gct 
+                                                         S               S                      
+M99660 Homsap IGHV3-23*01 F         ... ... ... ... --- -g- --- --- --- -g- --- --- --- --- --- 
+
+                                     FR2 - IMGT  -------------------------> ______________  CDR2
+                                                    50                  55                  60  
+                                     P   S   K   G   L   E   W   V   S   S   I   T   G   S      
+CGAGCCATCTCCAGGG-32_contig_1        cca agt aag ggg ctg gag tgg gtc tca agt att act gga agt ... 
+                                         G                               A       S              
+M99660 Homsap IGHV3-23*01 F         --- g-g --- --- --- --- --- --- --- gc- --- -g- --t --- ... 
+
+                                     - IMGT  __________ <---------------------------------------
+                                                    65                  70                  75  
+                                         G   G   G   T   Y   Y   A   H   S   V   K       G   R  
+CGAGCCATCTCCAGGG-32_contig_1        ... ggt ggt ggc aca tac tac gca cac tcc gtg aag ... ggc cgg 
+                                                 S                   D                          
+M99660 Homsap IGHV3-23*01 F         ... --- --- a-- --- --- --- --- g-- --- --- --- ... --- --- 
+
+                                    -------------------------------  FR3 - IMGT  ---------------
+                                                    80                  85                  90  
+                                     F   T   I   S   R   D   N   S   K   N   T   L   Y   L   Q  
+CGAGCCATCTCCAGGG-32_contig_1        ttc acc atc tcc aga gac aat tcc aag aac acg ctg tat ctc caa 
+                                                                                                
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- --- --- --- --- --g --- 
+
+                                    ------------------------------------------------------> ____
+                                                    95                  100             104 
+                                     M   N   S   L   R   A   E   D   T   A   V   Y   Y   C   A  
+CGAGCCATCTCCAGGG-32_contig_1        atg aac agc ctg aga gcc gag gac acg gcc gta tat tac tgt gcg 
+                                                                                                
+M99660 Homsap IGHV3-23*01 F         --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+                                    __________________  CDR3 - IMGT  __________________
+                                    
+                                     K   Q   G   A   Y   S   S   G   W   S   R   F   D   W   G  
+CGAGCCATCTCCAGGG-32_contig_1        aaa cag ggt gcg tat agc agt ggc tgg tcc cgt ttc gac tgg ggc 
+                                       
+M99660 Homsap IGHV3-23*01 F         --- g-
+
+                                    
+                                    
+                                     Q   G   T   L   V   I   V   S   S   G   S   A   S   A   P  
+CGAGCCATCTCCAGGG-32_contig_1        cag gga acc ctg gtc atc gtc tcc tca ggg agt gca tcc gcc cca 
+                                    
+M99660 Homsap IGHV3-23*01 F         
+
+                                    
+                                    
+                                     T   L   F   P   L   V   S   C   E   N   S   P   S   D   T  
+CGAGCCATCTCCAGGG-32_contig_1        acc ctt ttc ccc ctc gtc tcc tgt gag aat tcc ccg tcg gat acg 
+                                    
+M99660 Homsap IGHV3-23*01 F         
+
+                                    
+                                    
+                                     S   S   V 
+CGAGCCATCTCCAGGG-32_contig_1        agc agc gtg
+                                    
+M99660 Homsap IGHV3-23*01 F         
+
+
+8. V-REGION protein display
+
+                                               FR1-IMGT          CDR1-IMGT       FR2-IMGT     CD
+                                                (1-26)            (27-38)        (39-55)       (
+                                    __________________________ ____________ _________________ __
+                                    1       10        20         30         40        50        
+                                    .........|.........|...... ...|........ .|.........|..... ..
+CGAGCCATCTCCAGGG-32_contig_1        EVQLLESGG.GLVQPGGSLRLSCATS GFTF....SNYA MTWVRQAPSKGLEWVSS IT
+M99660 Homsap IGHV3-23*01 F         EVQLLESGG.GLVQPGGSLRLSCAAS GFTF....SSYA MSWVRQAPGKGLEWVSA IS
+                                                            T           N    T      S       S  T
+
+                                    R2-IMGT                 FR3-IMGT                
+                                    56-65)                  (66-104)                
+                                    ________ _______________________________________
+                                     60         70        80        90        100     
+                                    ..|..... ....|.........|.........|.........|.... 
+CGAGCCATCTCCAGGG-32_contig_1        GS..GGGT YYAHSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYC AK
+M99660 Homsap IGHV3-23*01 F         GS..GGST YYADSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYC AK
+                                          G     H                                      
+
+
+9. V-REGION mutation and AA change table
+
+M99660 Homsap IGHV3-23*01;FR1-IMGT;g9>a,Q3
+M99660 Homsap IGHV3-23*01;FR1-IMGT;t45>c,P15
+M99660 Homsap IGHV3-23*01;FR1-IMGT;g73>a,A25>T(- - -)
+M99660 Homsap IGHV3-23*01;CDR1-IMGT;g107>a,S36>N(- - -)
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g119>c,S40>T(+ - +)
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g139>a,G47>S(+ + -)
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g141>t,G47>S(+ + -)
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g163>a,A55>S(- + -)
+M99660 Homsap IGHV3-23*01;FR2-IMGT;c164>g,A55>S(- + -)
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;g170>c,S57>T(+ - +)
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;t174>a,G58
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;a190>g,S64>G(+ + -)
+M99660 Homsap IGHV3-23*01;FR3-IMGT;g205>c,D69>H(- - -)
+M99660 Homsap IGHV3-23*01;FR3-IMGT;g267>c,L89
+M99660 Homsap IGHV3-23*01;CDR3-IMGT;g319>c
+
+10. V-REGION mutation and AA change statistics
+
+Nucleotide (nt) mutations
+V-GENE and allele;IMGT Label;Nb of positions including IMGT gaps (nt);Nb of nucleotides;Nb of identical nucleotides;Nb of mutations;Silent;Non Silent;a>g;g>a;c>t;t>c;a>c;c>a;a>t;t>a;g>c;c>g;g>t;t>g
+M99660 Homsap IGHV3-23*01;V-REGION;318 (320);294 (296);280 (281);14 (15);4 (5);10;1;5;0;1;0;0;0;1;4 (5);1;1;0
+M99660 Homsap IGHV3-23*01;FR1-IMGT;78;75;72;3;2;1;0;2;0;1;0;0;0;0;0;0;0;0
+M99660 Homsap IGHV3-23*01;CDR1-IMGT;36;24;23;1;0;1;0;1;0;0;0;0;0;0;0;0;0;0
+M99660 Homsap IGHV3-23*01;FR2-IMGT;51;51;46;5;0;5;0;2;0;0;0;0;0;0;1;1;1;0
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;30;24;21;3;1;2;1;0;0;0;0;0;0;1;1;0;0;0
+M99660 Homsap IGHV3-23*01;FR3-IMGT;117;114;112;2;1;1;0;0;0;0;0;0;0;0;2;0;0;0
+M99660 Homsap IGHV3-23*01;CDR3-IMGT;6 (8);6 (8);6 (7);0 (1);0 (1);0;0;0;0;0;0;0;0;0;0 (1);0;0;0
+
+Amino acid (AA) changes
+V-GENE and allele;IMGT Label;Nb of positions including IMGT gaps (AA);Nb of AA;Nb of identical AA;Nb of AA changes;(+ + +);(+ + -);(+ - +);(+ - -);(- + -);(- - +);(- - -)
+M99660 Homsap IGHV3-23*01;V-REGION;106;98;90;8;0;2;2;0;1;0;3
+M99660 Homsap IGHV3-23*01;FR1-IMGT;26;25;24;1;0;0;0;0;0;0;1
+M99660 Homsap IGHV3-23*01;CDR1-IMGT;12;8;7;1;0;0;0;0;0;0;1
+M99660 Homsap IGHV3-23*01;FR2-IMGT;17;17;14;3;0;1;1;0;1;0;0
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;10;8;6;2;0;1;1;0;0;0;0
+M99660 Homsap IGHV3-23*01;FR3-IMGT;39;38;37;1;0;0;0;0;0;0;1
+M99660 Homsap IGHV3-23*01;CDR3-IMGT;2;2;2;0;0;0;0;0;0;0;0
+
+11. V-REGION mutation hotspots
+
+Hotspots motifs and localizations in germline V-REGION
+
+(a/t)a
+Motif;Localization
+ta;38-39(FR1)
+ta;109-110(CDR1)
+aa;142-143(FR2)
+ta;165-166(FR2-CDR2)
+ta;168-169(CDR2)
+ta;174-175(CDR2)
+ta;189-190(CDR2)
+ta;196-197(FR3)
+ta;199-200(FR3)
+aa;214-215(FR3)
+aa;244-245(FR3)
+aa;250-251(FR3)
+aa;253-254(FR3)
+ta;262-263(FR3)
+aa;269-270(FR3)
+aa;270-271(FR3)
+aa;274-275(FR3)
+ta;302-303(FR3)
+ta;304-305(FR3)
+ta;307-308(FR3)
+aa;316-317(CDR3)
+aa;317-318(CDR3)
+
+t(a/t)
+Motif;Localization
+tt;13-14(FR1)
+tt;34-35(FR1)
+ta;38-39(FR1)
+tt;82-83(CDR1)
+tt;88-89(CDR1)
+tt;89-90(CDR1)
+ta;109-110(CDR1)
+ta;165-166(FR2-CDR2)
+tt;167-168(CDR2)
+ta;168-169(CDR2)
+ta;174-175(CDR2)
+ta;189-190(CDR2)
+ta;196-197(FR3)
+ta;199-200(FR3)
+tt;226-227(FR3)
+tt;246-247(FR3)
+ta;262-263(FR3)
+ta;302-303(FR3)
+ta;304-305(FR3)
+tt;306-307(FR3)
+ta;307-308(FR3)
+
+(a/g)g(c/t)(a/t)
+Motif;Localization
+agct;8-11(FR1)
+ggct;31-34(FR1)
+ggta;36-39(FR1)
+agca;103-106(CDR1)
+agct;106-109(CDR1)
+agct;118-121(FR2)
+ggct;132-135(FR2)
+ggct;146-149(FR2)
+agct;162-165(FR2)
+ggta;172-175(CDR2)
+ggta;187-190(CDR2)
+agca;190-193(CDR2)
+ggtt;224-227(FR3)
+
+(a/t)(a/g)c(c/t)
+Motif;Localization
+agct;8-11(FR1)
+agcc;41-44(FR1)
+agcc;72-75(FR1)
+agct;106-109(CDR1)
+tgcc;111-114(CDR1)
+agct;118-121(FR2)
+agct;162-165(FR2)
+tact;196-199(FR3)
+agcc;277-280(FR3)
+agcc;285-288(FR3)
+tact;307-310(FR3)
+
+Correlation between V-REGION mutations, AA changes, codons changes and hotspots motifs
+M99660 Homsap IGHV3-23*01;FR1-IMGT;g9>a,Q3;Q3 cag 7-9[agct 8-11]>Q caa
+M99660 Homsap IGHV3-23*01;FR1-IMGT;t45>c,P15;P15 cct 43-45>P ccc
+M99660 Homsap IGHV3-23*01;FR1-IMGT;g73>a,A25>T(- - -);A25 gcc 73-75>T acc
+M99660 Homsap IGHV3-23*01;CDR1-IMGT;g107>a,S36>N(- - -);S36 agc 106-108[agct 106-109]>N aac
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g119>c,S40>T(+ - +);S40 agc 118-120[agct 118-121]>T acc
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g139>a,G47>S(+ + -);G47 ggg 139-141>S agt
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g141>t,G47>S(+ + -);G47 ggg 139-141>S agt
+M99660 Homsap IGHV3-23*01;FR2-IMGT;g163>a,A55>S(- + -);A55 gct 163-165[agct 162-165]>S agt
+M99660 Homsap IGHV3-23*01;FR2-IMGT;c164>g,A55>S(- + -);A55 gct 163-165[agct 162-165]>S agt
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;g170>c,S57>T(+ - +);S57 agt 169-171>T act
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;t174>a,G58;G58 ggt 172-174[ta 174-175]>G gga
+M99660 Homsap IGHV3-23*01;CDR2-IMGT;a190>g,S64>G(+ + -);S64 agc 190-192[ta 189-190]>G ggc
+M99660 Homsap IGHV3-23*01;FR3-IMGT;g205>c,D69>H(- - -);D69 gac 205-207>H cac
+M99660 Homsap IGHV3-23*01;FR3-IMGT;g267>c,L89;L89 ctg 265-267>L ctc
+M99660 Homsap IGHV3-23*01;CDR3-IMGT;g319>c
+
+12. 'CGAGCCATCTCCAGGG-32_contig_1' V-REGION and V-D-J-REGION
+
+V-REGION nucleotide sequence in FASTA format
+
+>CGAGCCATCTCCAGGG-32_contig_1
+gaggtgcaactgttggagtctggggga...ggcttggtacagcccggggggtccctgaga
+ctctcctgtgcaacctctggattcaccttt............agcaactatgccatgacc
+tgggtccgccaggctccaagtaaggggctggagtgggtctcaagtattactggaagt...
+...ggtggtggcacatactacgcacactccgtgaag...ggccggttcaccatctccaga
+gacaattccaagaacacgctgtatctccaaatgaacagcctgagagccgaggacacggcc
+gtatattactgtgcgaaa
+
+V-REGION amino acid sequence in FASTA format
+
+>CGAGCCATCTCCAGGG-32_contig_1
+EVQLLESGG.GLVQPGGSLRLSCATSGFTF....SNYAMTWVRQAPSKGLEWVSSITGS.
+.GGGTYYAHSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAK
+
+V-REGION amino acid sequence on one line
+
+>CGAGCCATCTCCAGGG-32_contig_1
+EVQLLESGG.GLVQPGGSLRLSCATSGFTF....SNYAMTWVRQAPSKGLEWVSSITGS..GGGTYYAHSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAK
+
+V-D-J-REGION nucleotide sequence in FASTA format
+
+>CGAGCCATCTCCAGGG-32_contig_1
+gaggtgcaactgttggagtctggggga...ggcttggtacagcccggggggtccctgaga
+ctctcctgtgcaacctctggattcaccttt............agcaactatgccatgacc
+tgggtccgccaggctccaagtaaggggctggagtgggtctcaagtattactggaagt...
+...ggtggtggcacatactacgcacactccgtgaag...ggccggttcaccatctccaga
+gacaattccaagaacacgctgtatctccaaatgaacagcctgagagccgaggacacggcc
+gtatattactgtgcgaaacagggtgcgtatagcagtggctggtcccgtttcgactggggc
+cagggaaccctggtcatcgtctcctcag
+
+V-D-J-REGION amino acid sequence in FASTA format
+
+
+>CGAGCCATCTCCAGGG-32_contig_1
+EVQLLESGG.GLVQPGGSLRLSCATSGFTF....SNYAMTWVRQAPSKGLEWVSSITGS.
+.GGGTYYAHSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKQGAYSSGWSRFDWG
+QGTLVIVSS
+
+V-D-J-REGION amino acid sequence on one line
+
+
+>CGAGCCATCTCCAGGG-32_contig_1
+EVQLLESGG.GLVQPGGSLRLSCATSGFTF....SNYAMTWVRQAPSKGLEWVSSITGS..GGGTYYAHSVK.GRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKQGAYSSGWSRFDWGQGTLVIVSS
+
+13. Annotation by IMGT/Automat
+
+Label                     Location/Qualifiers
+V-D-J-REGION              137..500
+                          /CDR_length="[8.8.14]"
+                          /FR_length="[25.17.38.11]"
+                          /nucleotide sequence
+                          gaggtgcaactgttggagtctgggggaggcttggtacagcccggggggtccctgagactc
+                          tcctgtgcaacctctggattcacctttagcaactatgccatgacctgggtccgccaggct
+                          ccaagtaaggggctggagtgggtctcaagtattactggaagtggtggtggcacatactac
+                          gcacactccgtgaagggccggttcaccatctccagagacaattccaagaacacgctgtat
+                          ctccaaatgaacagcctgagagccgaggacacggccgtatattactgtgcgaaacagggt
+                          gcgtatagcagtggctggtcccgtttcgactggggccagggaaccctggtcatcgtctcc
+                          tcag
+                          /translation
+                          EVQLLESGGGLVQPGGSLRLSCATSGFTFSNYAMTWVRQAPSKGLEWVSSITGSGGGTYY
+                          AHSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAKQGAYSSGWSRFDWGQGTLVIVS
+                          S
+V-REGION                  137..430
+                          /allele="Homsap IGHV3-23*01 F or Homsap IGHV3-23D*01 F"
+                          /gene="Homsap IGHV3-23 or Homsap IGHV3-23D"
+                          /nucleotide sequence
+                          gaggtgcaactgttggagtctgggggaggcttggtacagcccggggggtccctgagactc
+                          tcctgtgcaacctctggattcacctttagcaactatgccatgacctgggtccgccaggct
+                          ccaagtaaggggctggagtgggtctcaagtattactggaagtggtggtggcacatactac
+                          gcacactccgtgaagggccggttcaccatctccagagacaattccaagaacacgctgtat
+                          ctccaaatgaacagcctgagagccgaggacacggccgtatattactgtgcgaaa
+                          /translation
+                          EVQLLESGGGLVQPGGSLRLSCATSGFTFSNYAMTWVRQAPSKGLEWVSSITGSGGGTYY
+                          AHSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYCAK
+FR1-IMGT                  137..211
+                          /AA_IMGT="AA 1 to 26, AA 10 is missing"
+                          /nucleotide sequence
+                          gaggtgcaactgttggagtctgggggaggcttggtacagcccggggggtccctgagactc
+                          tcctgtgcaacctct
+                          /translation
+                          EVQLLESGGGLVQPGGSLRLSCATS
+1st-CYS                   200..202
+                          /nucleotide sequence
+                          tgt
+                          /translation
+                          C
+CDR1-IMGT                 212..235
+                          /AA_IMGT="AA 27 to 38, AA 31, 32, 33 and 34 are missing"
+                          /nucleotide sequence
+                          ggattcacctttagcaactatgcc
+                          /translation
+                          GFTFSNYA
+FR2-IMGT                  236..286
+                          /AA_IMGT="AA 39 to 55"
+                          /nucleotide sequence
+                          atgacctgggtccgccaggctccaagtaaggggctggagtgggtctcaagt
+                          /translation
+                          MTWVRQAPSKGLEWVSS
+CONSERVED-TRP             242..244
+                          /nucleotide sequence
+                          tgg
+                          /translation
+                          W
+CDR2-IMGT                 287..310
+                          /AA_IMGT="AA 56 to 65, AA 60 and 61 are missing"
+                          /nucleotide sequence
+                          attactggaagtggtggtggcaca
+                          /translation
+                          ITGSGGGT
+FR3-IMGT                  311..424
+                          /AA_IMGT="AA 66 to 104, AA 73 is missing"
+                          /nucleotide sequence
+                          tactacgcacactccgtgaagggccggttcaccatctccagagacaattccaagaacacg
+                          ctgtatctccaaatgaacagcctgagagccgaggacacggccgtatattactgt
+                          /translation
+                          YYAHSVKGRFTISRDNSKNTLYLQMNSLRAEDTAVYYC
+2nd-CYS                   422..424
+                          /nucleotide sequence
+                          tgt
+                          /translation
+                          C
+CDR3-IMGT                 425..466
+                          /AA_IMGT="AA 105 to 117, AA 112.1 is added"
+                          /nucleotide sequence
+                          gcgaaacagggtgcgtatagcagtggctggtcccgtttcgac
+                          /translation
+                          AKQGAYSSGWSRFD
+JUNCTION                  422..469
+                          /in_frame
+                          /nucleotide sequence
+                          tgtgcgaaacagggtgcgtatagcagtggctggtcccgtttcgactgg
+                          /translation
+                          CAKQGAYSSGWSRFDW
+3'V-REGION                422..430
+                          /nucleotide sequence
+                          tgtgcgaaa
+                          /translation
+                          CAK
+(N-D)-J-REGION            431..500
+                          /nucleotide sequence
+                          cagggtgcgtatagcagtggctggtcccgtttcgactggggccagggaaccctggtcatc
+                          gtctcctcag
+                          /translation
+                          QGAYSSGWSRFDWGQGTLVIVSS
+(N-D)-REGION              431..464
+                          /nucleotide sequence
+                          cagggtgcgtatagcagtggctggtcccgtttcg
+                          /translation
+                          QGAYSSGWSRF
+N1-REGION                 431..438
+                          /nucleotide sequence
+                          cagggtgc
+                          /translation
+                          QG
+D-J-REGION                439..500
+                          /codon_start=2
+                          /nucleotide sequence
+                          gtatagcagtggctggtcccgtttcgactggggccagggaaccctggtcatcgtctcctc
+                          ag
+                          /translation
+                          YSSGWSRFDWGQGTLVIVSS
+D-REGION                  439..455
+                          /allele="Homsap IGHD6-19*01"
+                          /gene="Homsap IGHD6-19"
+                          /codon_start=2
+                          /nucleotide sequence
+                          gtatagcagtggctggt
+                          /translation
+                          YSSGW
+N2-REGION                 456..464
+                          /codon_start=3
+                          /nucleotide sequence
+                          cccgtttcg
+                          /translation
+                          RF
+5'J-REGION                465..469
+                          /codon_start=3
+                          /nucleotide sequence
+                          actgg
+                          /translation
+                          W
+J-REGION                  465..500
+                          /allele="Homsap IGHJ4*02 F"
+                          /gene="Homsap IGHJ4"
+                          /codon_start=3
+                          /nucleotide sequence
+                          actggggccagggaaccctggtcatcgtctcctcag
+                          /translation
+                          WGQGTLVIVSS
+J-TRP                     467..469
+                          /nucleotide sequence
+                          tgg
+                          /translation
+                          W
+FR4-IMGT                  467..500
+                          /AA_IMGT="AA 118 to 128"
+                          /nucleotide sequence
+                          tggggccagggaaccctggtcatcgtctcctcag
+                          /translation
+                          WGQGTLVIVSS
+
+Tue Mar 17, 2020 16:56:47 CET

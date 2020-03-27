@@ -1,0 +1,187 @@
+---
+title: "20200306 Checking CDR3 mutation data validity"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+## Overview
+
+Sachin pointed out the other day that some of the mutation data on the CDR3 assessment (specifically the mutations and hotspot mutations) didn't seem to line up. I wanted to check some of this. Here is the .csv that I sent him to analyze (from the Ghosn lab BM3 data)
+
+```{r}
+
+processed_data <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/lineage_processed_data.csv")
+
+```
+
+Now let's pull the CDR3 data which is what he's interested in
+
+```{r}
+
+cdr3_columns <- which(grepl("cdr3", names(processed_data)))
+
+cdr3_data <- processed_data %>% select(1:20, all_of(cdr3_columns))
+
+```
+
+Ok, now let's look at the distribution of the lengths 
+
+```{r}
+
+ggplot(cdr3_data, aes(x = cdr3_aa_length)) + geom_density()
+ggplot(cdr3_data, aes(x = nt_cdr3_length)) + geom_density()
+
+summary(cdr3_data$nt_cdr3_length / cdr3_data$cdr3_aa_length)
+
+```
+
+Ok, so the lengths look good. Everything seems to be a triplicate nt 
+
+Now let's look at the number of mutations in the CDR3s.
+
+```{r}
+
+ggplot(cdr3_data, aes(x = cdr3_imgt_nb_of_mutations)) + geom_density()
+ggplot(cdr3_data, aes(x = cdr3_imgt_nb_of_aa_changes)) + geom_density()
+
+```
+
+Those both seem reasonable. Let's make sure there aren't more mutations than positions.
+
+```{r}
+
+ggplot(cdr3_data, aes(x = cdr3_imgt_nb_of_mutations / nt_cdr3_length)) + geom_density()
+ggplot(cdr3_data, aes(x = cdr3_imgt_nb_of_aa_changes / cdr3_aa_length)) + geom_density()
+
+```
+
+That all looks fine. Low let's look at hotspots and hotspot mutations.
+
+```{r}
+
+summary(cdr3_data$cdr3_hotspot_loci)
+summary(cdr3_data$cdr3_hotspot_muts)
+
+
+```
+
+On face value that seems fine.
+
+```{r}
+
+summary(cdr3_data$cdr3_hotspot_muts / cdr3_data$cdr3_hotspot_loci)
+
+ggplot(cdr3_data, aes(x = cdr3_data$cdr3_hotspot_muts / cdr3_data$cdr3_hotspot_loci)) + geom_density()
+
+sum(cdr3_data$cdr3_hotspot_muts >= cdr3_data$cdr3_hotspot_loci)
+
+cdr3_heavy_chains <- cdr3_data %>% filter(chain_type == "igh")
+
+ggplot(cdr3_heavy_chains, aes(x = cdr3_heavy_chains$cdr3_hotspot_muts / cdr3_heavy_chains$cdr3_hotspot_loci)) + geom_density()
+
+sum(cdr3_heavy_chains$cdr3_hotspot_muts > cdr3_heavy_chains$cdr3_hotspot_loci)
+
+```
+
+So there are 7 sequences that are showing a greater number of hotspot mutations than the number of hotspots.
+
+Now let's look to see if there are instances where the number of hotspot mutations exceeds the number of mutations
+
+```{r}
+
+summary(cdr3_heavy_chains$cdr3_hotspot_muts / cdr3_heavy_chains$cdr3_imgt_nb_of_mutations)
+
+ggplot(cdr3_heavy_chains, aes(x = cdr3_hotspot_muts / cdr3_imgt_nb_of_mutations)) + geom_density() + geom_rug()
+
+sum(cdr3_heavy_chains$cdr3_hotspot_muts > cdr3_heavy_chains$cdr3_imgt_nb_of_mutations, na.rm = TRUE)
+
+hot_muts_exceed_muts <- cdr3_heavy_chains %>% filter(cdr3_hotspot_muts > cdr3_imgt_nb_of_mutations)
+
+head(hot_muts_exceed_muts$indexed_contig_id)
+
+example1 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AAAGATGGTACCGTAT-32_contig_1") 
+example2 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AAAGTAGAGACAGAGA-32_contig_1") 
+example3 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AACCATGAGGCCCGTT-32_contig_2") 
+example4 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AACTCTTTCACCACCT-32_contig_1") 
+example5 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AAGCCGCGTCGGCATC-32_contig_1") 
+example6 <- hot_muts_exceed_muts %>% filter(indexed_contig_id == "AAGGCAGCACGGTGTC-32_contig_2") 
+
+paste(example1$nt_cdr3_length, example1$cdr3_imgt_nb_of_mutations, example1$cdr3_hotspot_loci, example1$cdr3_hotspot_muts, sep = ";")
+paste(example2$nt_cdr3_length, example2$cdr3_imgt_nb_of_mutations, example2$cdr3_hotspot_loci, example2$cdr3_hotspot_muts, sep = ";")
+paste(example3$nt_cdr3_length, example3$cdr3_imgt_nb_of_mutations, example3$cdr3_hotspot_loci, example3$cdr3_hotspot_muts, sep = ";")
+paste(example4$nt_cdr3_length, example4$cdr3_imgt_nb_of_mutations, example4$cdr3_hotspot_loci, example4$cdr3_hotspot_muts, sep = ";")
+paste(example5$nt_cdr3_length, example5$cdr3_imgt_nb_of_mutations, example5$cdr3_hotspot_loci, example5$cdr3_hotspot_muts, sep = ";")
+paste(example6$nt_cdr3_length, example6$cdr3_imgt_nb_of_mutations, example6$cdr3_hotspot_loci, example6$cdr3_hotspot_muts, sep = ";")
+
+```
+
+```{r}
+
+ggplot(hot_muts_exceed_muts, aes(x = nt_cdr3_length)) + geom_density()
+
+```
+
+Well I just looked into the IMGT analysis, and it looks like there is an internal issue where the v_mutation analysis is incorrectly referencing the aligned CDR3 sequence. I have reached out to them for clarification.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

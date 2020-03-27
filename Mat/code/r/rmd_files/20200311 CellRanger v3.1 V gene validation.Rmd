@@ -1,0 +1,217 @@
+---
+title: "20200311 CellRanger v3.1 V gene validation"
+output: html_document
+---
+
+### Overview
+
+So one of the initial concerns with CellRanger's VDJ analysis was it's mismatching of V calls in reference to IMGT. Eliver has suggested that it may no longer be the case so I'm going to check that really quick. I'm going to pull in two of the test dataset outputs. The first is the annotations file from CellRanger, and the second is the IMGT summary output.
+
+```{r}
+library(tidyverse)
+
+cell_ranger_annotations <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/cellranger_vdj_outs/BM3_all_contig_annotations.csv")
+
+processed_imgt_annotations <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/superrseq_outs/superrseq_processed_imgt_output.index_32.csv")
+
+cell_ranger_annotations <- cell_ranger_annotations[,c(1,3,7,9,13,14)]
+
+cell_ranger_annotations$contig_id <- gsub("\\-1", "-32", cell_ranger_annotations$contig_id)
+
+names(cell_ranger_annotations) <- paste0("cr_", names(cell_ranger_annotations))
+
+cell_ranger_annotations$cr_nt_cdr3_length <- nchar(cell_ranger_annotations$cr_cdr3_nt)
+
+cell_ranger_annotations$cr_aa_cdr3_length <- nchar(cell_ranger_annotations$cr_cdr3)
+
+processed_imgt_annotations <- processed_imgt_annotations[,c(1, 24, 26, 30, 32, 45, 48, 70, 73)]
+
+joined_annotations <- left_join(processed_imgt_annotations, cell_ranger_annotations, by = c("indexed_contig_id" = "cr_contig_id"))
+
+```
+
+Neat. Now let's compare. First, what percentage of the CDR3 aa sequences are identical.
+
+```{r}
+
+joined_annotations$cr_cdr3_nt <- tolower(joined_annotations$cr_cdr3_nt)
+
+table((joined_annotations$nt_cdr3 == joined_annotations$cr_cdr3_nt), (joined_annotations$aa_cdr3 == joined_annotations$cr_cdr3))
+
+```
+
+Hmmm, so none of the CDR3s have the same translated sequence.
+
+```{r}
+
+summary(joined_annotations$nt_cdr3_length)
+summary(joined_annotations$cr_nt_cdr3_length)
+
+```
+
+so they have different lengths?
+
+```{r}
+
+table(joined_annotations$cr_aa_cdr3_length == joined_annotations$cr_nt_cdr3_length/3)
+
+table(joined_annotations$cdr3_aa_length == joined_annotations$nt_cdr3_length/3)
+
+```
+
+They are internally consistent...
+
+
+```{r}
+
+table(joined_annotations$aa_cdr3 == joined_annotations$cr_cdr3)
+summary(joined_annotations$cr_aa_cdr3_length - joined_annotations$cdr3_aa_length)
+
+```
+
+So except for one very long CDR3 that IMGT identified, cell ranger translated sequences are exactly 2 amino acids longer
+
+```{r}
+
+summary(joined_annotations$cr_nt_cdr3_length - joined_annotations$nt_cdr3_length)
+
+```
+
+...and six base pairs longer.
+
+```{r}
+
+head(joined_annotations$aa_cdr3)
+head(joined_annotations$cr_cdr3)
+
+table(str_sub(joined_annotations$aa_cdr3, -1, -1) == str_sub(joined_annotations$cr_cdr3, -2,-2))
+
+table(str_sub(joined_annotations$aa_cdr3, 1, 1) == str_sub(joined_annotations$cr_cdr3, 2,2))
+
+```
+
+So that tells you that the vast majority of the time, CellRanger is tacking on an extra amino acid at the front end, and another at the back end. That's fine except the sequence length use in assigning lineages will be off.
+
+Now let's look at the V gene assignment.
+
+```{r}
+
+table(joined_annotations$v_gene)
+table(joined_annotations$cr_v_gene)
+
+joined_annotations$cr_v_gene <- tolower(joined_annotations$cr_v_gene)
+joined_annotations$cr_j_gene <- tolower(joined_annotations$cr_j_gene)
+
+table(joined_annotations$cr_v_gene)
+
+table(joined_annotations$v_gene == joined_annotations$cr_v_gene)
+
+table(joined_annotations$j_gene == joined_annotations$cr_j_gene)
+
+table(joined_annotations$v_gene == joined_annotations$cr_v_gene, joined_annotations$j_gene == joined_annotations$cr_j_gene)
+
+
+```
+
+So these are pretty mismatched, and mismatching of V does not correlate with mismatching of j
+
+Let's find the heavy chain mismatches.
+
+```{r}
+
+v_mismatches <- joined_annotations %>% filter(v_gene != cr_v_gene)
+
+head(v_mismatches[,c("v_gene", "cr_v_gene")], 100)
+
+j_mismatches <- joined_annotations %>% filter(j_gene != cr_j_gene)
+
+head(j_mismatches[,c("j_gene", "cr_j_gene")], 100)
+
+```
+
+So the Js are just straight misses. There is an issue with 'd' gene designation on the v it seems in cellranger in ighv1-69(d), igkv1(d)-39, and igkv1(d)-33. Let me get rid of that...
+
+```{r}
+
+joined_annotations$cr_v_gene <- gsub("d", "", joined_annotations$cr_v_gene)
+
+table(joined_annotations$v_gene == joined_annotations$cr_v_gene, joined_annotations$j_gene == joined_annotations$cr_j_gene)
+
+```
+
+Much better, but 10% are still V gene misses.
+
+```{r}
+
+v_mismatches <- joined_annotations %>% filter(v_gene != cr_v_gene)
+
+head(v_mismatches[,c("v_gene", "cr_v_gene")], 100)
+
+ggplot(v_mismatches, aes(cr_v_gene)) + geom_bar()
+
+ggplot(joined_annotations, aes(cr_v_gene)) + geom_bar()
+
+```
+
+So it looks like the misses are consistent. For example, 3-9 is consistently read as 3-43. Does that mean that every instance of 3-9 in the imgt data is being read differently?
+
+```{r}
+
+table(joined_annotations %>% filter(v_gene == "ighv3-9") %>% .$cr_v_gene)
+
+```
+
+So there appears not to be any 3-9 instances. Is that true of the others?
+
+```{r}
+
+table(joined_annotations %>% filter(v_gene == "ighv4-38-2") %>% .$cr_v_gene)
+
+table(joined_annotations %>% filter(v_gene == "ighv4-31") %>% .$cr_v_gene)
+
+table(joined_annotations %>% filter(v_gene == "iglv1-47") %>% .$cr_v_gene)
+
+```
+
+So it seems that first of all, ighv3-9 doesn't exist in the CellRanger alignment library. For the other it's either the same way, or just more prone to missing.
+
+In conclusion, the CDR3s are longer in cell ranger, and the V genes are not always up to date, and otherwise inconsistent with the calls about 10% of the time. Do the Js miss more with high mutations?
+
+```{r}
+
+mismatched_j_contigs <- j_mismatches$indexed_contig_id
+
+all_data <- read_csv("/Users/matt/Desktop/TotalSeq/totalseq_repository/test_data/imgt_vdj_outs/summary_files/lineage_processed_data.csv")
+
+all_data$j_mismatched <- ifelse(all_data$indexed_contig_id %in% mismatched_j_contigs, TRUE, FALSE)
+
+ggplot(all_data, aes(x = v_region_nb_of_mutations, col = j_mismatched)) + geom_density(bw = 4)
+
+```
+
+Maybe a little bit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
